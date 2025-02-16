@@ -1,5 +1,11 @@
 import { useRef, useState } from 'react';
 import { CameraView, CameraCapturedPicture } from 'expo-camera';
+import * as FileSystem from 'expo-file-system';
+
+interface CameraResult {
+  uri: string;
+  base64: string | null;
+}
 
 const calculateSizeInMB = (base64String: string | null | undefined): number => {
   if (!base64String) return 0;
@@ -14,43 +20,64 @@ export function useCamera() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
 
-  const takePicture = async () => {
+  const takePicture = async (): Promise<CameraResult | null> => {
     if (cameraRef.current) {
       try {
         console.log('[useCamera] Taking picture...');
         const capturedPic = await cameraRef.current.takePictureAsync({
-          base64: true,
-          quality: 0.2,        // Lower quality (0 to 1)
-          imageType: 'jpg',    // Must be 'jpg' or 'png' in expo-camera
-          skipProcessing: true // Do not skip additional processing (?)
+          quality: 0.2,
+          imageType: 'jpg',
         });
 
         if (capturedPic) {
           console.log('[useCamera] Picture captured successfully');
-          console.log('[useCamera] Original image size:', calculateSizeInMB(capturedPic.base64).toFixed(2), 'MB');
           
-          setPhotoUri(capturedPic.uri);
-          
-          // NOTE: MAY CAUSE LARGE ISSUES 
-          // Reduce the quality of the image by 0.5. this is for processing purposes and should not affect the quality of the image
-          const reducedQualityBase64 = capturedPic.base64 ? capturedPic.base64.substring(0, Math.floor(capturedPic.base64.length * 0.5)) : null;
-          console.log('[useCamera] Reduced image size:', calculateSizeInMB(reducedQualityBase64).toFixed(2), 'MB');
-          
-          setPhotoBase64(reducedQualityBase64);
+          // Save image to temp directory with compression
+          const tempFilePath = `${FileSystem.cacheDirectory}temp_capture.jpg`;
+          await FileSystem.copyAsync({
+            from: capturedPic.uri,
+            to: tempFilePath,
+          });
 
-          return { //image and location
-            uri: capturedPic.uri,
-            base64: reducedQualityBase64
+          // Get file info for logging
+          const fileInfo = await FileSystem.getInfoAsync(tempFilePath);
+          if (fileInfo.exists) {
+            console.log('[useCamera] Saved image size:', fileInfo.size / 1024 / 1024, 'MB');
+          } else {
+            console.log('[useCamera] File not found at:', tempFilePath);
+          }
+
+          // Read as base64
+          const base64 = await FileSystem.readAsStringAsync(tempFilePath, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+
+          // Remove the "data:image/jpeg;base64," prefix if it exists
+          const cleanBase64 = base64.replace(/^data:image\/\w+;base64,/, '');
+
+          console.log('[useCamera] Base64 length:', cleanBase64.length);
+
+          setPhotoUri(tempFilePath);
+          setPhotoBase64(cleanBase64);
+
+          console.log('[useCamera] Temp file path:', tempFilePath);
+
+          return {
+            uri: tempFilePath,
+            base64: cleanBase64
           };
-        } else { //fail statement
-          console.error('[useCamera] Failed to capture photo: capturedPic is undefined');
         }
-      } catch (error) { //if anything goes wrong:
+      } catch (error) {
         console.error('[useCamera] Error taking photo:', error);
+        throw error;
       }
     }
     return null;
   };
-
-  return { cameraRef, photoUri, photoBase64, takePicture }; //return the cameraRef, photo location, image, and takePicture function
+  return { 
+    cameraRef, 
+    photoUri, 
+    photoBase64, 
+    takePicture 
+  };
 } 

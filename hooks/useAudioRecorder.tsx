@@ -20,22 +20,41 @@ export function useAudioRecorder(options?: AudioRecorderOptions) {
       try {
         const permission = await Audio.requestPermissionsAsync();
         setHasPermission(permission.status === 'granted');
+        
+        // Pre-configure audio mode when component mounts
+        if (permission.status === 'granted') {
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: true,
+            playsInSilentModeIOS: true,
+          });
+        }
       } catch (error) {
         console.error('Permission error:', error);
         setHasPermission(false);
       }
     })();
+
+    // Cleanup when component unmounts
+    return () => {
+      Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: false,
+      });
+    };
   }, []);
 
+  
   const startRecording = useCallback(async () => {
     try {
       if (!hasPermission) {
         throw new Error('Microphone permission not granted');
       }
 
+      // Explicitly set audio mode before each recording
+      // This ensures iOS will allow recording
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
       });
 
       const { recording: newRecording } = await Audio.Recording.createAsync(
@@ -61,7 +80,6 @@ export function useAudioRecorder(options?: AudioRecorderOptions) {
       
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
-        playsInSilentModeIOS: false,
       });
 
       const uri = recording.getURI();

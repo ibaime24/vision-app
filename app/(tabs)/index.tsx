@@ -70,22 +70,32 @@ export default function HomeScreen() {
 
       // Transcribe the audio
       const transcribedText = await transcribeAudio(audioData.uri);
+      console.log('[HomeScreen] Transcribed text:', transcribedText);
+      
       if (!transcribedText) {
         throw new Error('Failed to transcribe audio');
       }
-      // Send text and base64 image to OpenAI
-      await sendToOpenAI({
+
+      // Get the response directly from sendToOpenAI
+      const response = await sendToOpenAI({
         transcribedText,
         base64Image: photoBase64, 
       });
 
-      // Speak the AI response (if present)
-      if (!aiResponse) {
-        throw new Error('No AI response available');
+      console.log('[HomeScreen] AI Response before speech:', response);
+      
+      // Use the response directly
+      if (response) {
+        try {
+          await speakText(response);
+        } catch (speechError) {
+          console.error('[HomeScreen] ElevenLabs error:', speechError);
+          Alert.alert('Speech Error', 'Failed to convert text to speech');
+        }
       }
-      await speakText(aiResponse);
 
     } catch (error) {
+      console.error('[HomeScreen] Error in handlePressOut:', error);
       Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
     }
   };

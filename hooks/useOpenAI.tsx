@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import OpenAI from "openai";
 import Constants from 'expo-constants';
+import * as FileSystem from 'expo-file-system';
 
 // Get the OpenAI API key from environment variables
 const OPENAI_API_KEY = Constants.expoConfig?.extra?.OPENAI_API_KEY;
@@ -25,7 +26,7 @@ interface UseOpenAIReturn {
   status: OpenAIStatus;
   error: Error | null;
   aiResponse: string | null;
-  sendToOpenAI: (params: SendToOpenAIParams) => Promise<void>;
+  sendToOpenAI: (params: SendToOpenAIParams) => Promise<string>;
 }
 
 export function useOpenAI(): UseOpenAIReturn {
@@ -38,65 +39,78 @@ export function useOpenAI(): UseOpenAIReturn {
       setStatus('loading');
       setError(null);
 
-      // Clean up the image string
-      const cleanBase64 = base64Image?.replace(/\s/g, '') || '';
-      const imageUrl = cleanBase64.startsWith('data:image/jpeg;base64,')
-        ? cleanBase64
-        : `data:image/jpeg;base64,${cleanBase64}`;
+      if (!base64Image) {
+        throw new Error('No image data provided');
+      }
 
-      // Construct the full messages array
+      // Save base64 to temporary file
+      const tempFilePath = `${FileSystem.cacheDirectory}temp_image.jpg`;
+      await FileSystem.writeAsStringAsync(tempFilePath, base64Image, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Read file info to verify
+      const fileInfo = await FileSystem.getInfoAsync(tempFilePath);
+      if (!fileInfo.exists) {
+        throw new Error('Failed to create temporary image file');
+      }
+      console.log('[useOpenAI] Image file size:', fileInfo.size / 1024 / 1024, 'MB');
+
+      // Read file back as base64
+      const imageBase64 = await FileSystem.readAsStringAsync(tempFilePath, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const imageUrl = `data:image/jpeg;base64,${imageBase64}`;
+
       const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
         {
-          role: 'system',
-          content: "You are Son, a concise yet informative vision assistant for the visually impaired. Start descriptions with 'I see'",
+          role: 'system' as const,
+          content: "You are Son, a concise yet informative vision assistant for the visually impaired. Start descriptions with 'I see'"
         },
+        {
+          role: 'user' as const,
+          content: [
+            { type: 'text' as const, text: transcribedText || 'What do you see in this image?' },
+            {
+              type: 'image_url' as const,
+              image_url: {
+                url: imageUrl,
+                detail: 'low' as const
+              }
+            }
+          ]
+        }
       ];
 
-      // Add user message
-      // If only text is provided
-      if (transcribedText && !base64Image) {
-        messages.push({
-          role: 'user',
-          content: transcribedText,
-        });
-      }
-      // If only image is provided
-      else if (!transcribedText && base64Image) {
-        messages.push({
-          role: 'user',
-          content: `Here is an image to describe: ${imageUrl}`,
-        });
-      }
-      // If both are provided
-      else if (transcribedText && base64Image) {
-        messages.push({
-          role: 'user',
-          content: `Text: ${transcribedText}\nImage: ${imageUrl}`,
-        });
-      } 
-      // If nothing provided
-      else {
-        throw new Error('No input (text or image) provided');
-      }
-
-      // Call OpenAI
       const response = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages,
         max_tokens: 300,
       });
 
+      console.log('[useOpenAI] Response received:', response);
+
       const choice = response.choices?.[0];
-      if (!choice || !choice.message?.content) {
+      if (!choice?.message?.content) {
         throw new Error('OpenAI response missing content');
+      }
+
+      console.log('[useOpenAI] AI response content:', choice.message.content);
+      if (!choice?.message?.content) {
+        throw new Error('no response ');
+      }
+      else{
+        console.log('response', choice.message.content)
       }
 
       setAiResponse(choice.message.content);
       setStatus('success');
+      return choice.message.content;
     } catch (err) {
       console.error('[useOpenAI] Error:', err);
       setStatus('error');
-      setError(err instanceof Error ? err : new Error(String(err)));
+      throw err;
     }
   };
 
