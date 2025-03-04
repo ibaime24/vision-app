@@ -9,6 +9,7 @@ import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import { useWhispersAPI } from '../../hooks/useWhispersAPI';
 import { useOpenAI } from '../../hooks/useOpenAI';
 import { useElevenLabs } from '../../hooks/useElevenLabs';
+import { useHapticBeep } from '../../hooks/useHapticSecond'; // not ready for use
 
 /**
  * Main screen where user sees a continuous live camera feed.
@@ -23,7 +24,7 @@ export default function HomeScreen() {
   const { isRecording, hasPermission, startRecording, stopRecording } = useAudioRecorder();
   const { transcribeAudio, status: whisperStatus } = useWhispersAPI();
   const { sendToOpenAI, aiResponse, status: openAIStatus } = useOpenAI();
-  const { speakText, status: elevenLabsStatus } = useElevenLabs();
+  const { speakText, status: elevenLabsStatus, getAudioFromElevenLabs, playAudioFile } = useElevenLabs();
   const router = useRouter();
 
   const playRecordedAudio = async (uri: string) => {
@@ -55,44 +56,74 @@ export default function HomeScreen() {
 
   const handlePressOut = async () => {
     try {
+      const startTime = Date.now();
+      console.log('[HomeScreen] Starting process...');
+
+      if (!isRecording) {
+        throw new Error('Recording was not properly started');
+      }
+
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const audioData = await stopRecording();
+      console.log(`[HomeScreen] Recording stopped: ${Date.now() - startTime}ms`);
+
+      if (!audioData?.uri) {
+        throw new Error('Failed to get audio recording data');
+      }
 
       if (!photoBase64) {
         throw new Error('Missing base64 image data');
       }
-      if (!audioData?.uri) {
-        throw new Error('Missing audio recording');
-      }
 
       // Playback for debugging
-      await playRecordedAudio(audioData.uri);
+        // console.log('[HomeScreen] Playing recorded audio...');
+        // const playbackStart = Date.now();
+        // await playRecordedAudio(audioData.uri);
+        // console.log(`[HomeScreen] Audio playback complete: ${Date.now() - playbackStart}ms`);
 
       // Transcribe the audio
+      console.log('[HomeScreen] Starting transcription...');
+      const transcribeStart = Date.now();
       const transcribedText = await transcribeAudio(audioData.uri);
+      console.log(`[HomeScreen] Transcription complete: ${Date.now() - transcribeStart}ms`);
       console.log('[HomeScreen] Transcribed text:', transcribedText);
       
       if (!transcribedText) {
         throw new Error('Failed to transcribe audio');
       }
 
-      // Get the response directly from sendToOpenAI
+      // Get the response from OpenAI
+      console.log('[HomeScreen] Sending to OpenAI...');
+      const openAiStart = Date.now();
       const response = await sendToOpenAI({
         transcribedText,
         base64Image: photoBase64, 
       });
-
-      console.log('[HomeScreen] AI Response before speech:', response);
+      console.log(`[HomeScreen] OpenAI response received: ${Date.now() - openAiStart}ms`);
+      console.log('[HomeScreen] AI Response:', response);
       
-      // Use the response directly
+      // Use the response with ElevenLabs
       if (response) {
         try {
-          await speakText(response);
+          // First get the audio file
+          console.log('[HomeScreen] Getting audio from ElevenLabs...');
+          const elevenLabsStart = Date.now();
+          const audioFileUri = await getAudioFromElevenLabs(response);
+          console.log(`[HomeScreen] ElevenLabs audio received: ${Date.now() - elevenLabsStart}ms`);
+          
+          // Then play it
+          console.log('[HomeScreen] Playing ElevenLabs audio...');
+          const playStart = Date.now();
+          await playAudioFile(audioFileUri);
+          console.log(`[HomeScreen] Audio playback complete: ${Date.now() - playStart}ms`);
         } catch (speechError) {
           console.error('[HomeScreen] ElevenLabs error:', speechError);
           Alert.alert('Speech Error', 'Failed to convert text to speech');
         }
       }
+
+      const totalTime = Date.now() - startTime;
+      console.log(`[HomeScreen] Total process time: ${totalTime}ms (${(totalTime/1000).toFixed(2)}s)`);
 
     } catch (error) {
       console.error('[HomeScreen] Error in handlePressOut:', error);

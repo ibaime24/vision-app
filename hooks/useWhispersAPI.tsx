@@ -3,10 +3,10 @@ import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import Constants from 'expo-constants';
 
-const OPENAI_API_KEY = Constants.expoConfig?.extra?.OPENAI_API_KEY;
+const OPENAI_API_KEY = Constants.expoConfig?.extra?.EXPO_PUBLIC_OPENAI_API_KEY;
 
 if (!OPENAI_API_KEY) {
-  throw new Error('Missing OPENAI_API_KEY in environment variables');
+  throw new Error('Missing EXPO_PUBLIC_OPENAI_API_KEY in environment variables');
 }
 
 export type WhisperStatus = 'idle' | 'uploading' | 'success' | 'error';

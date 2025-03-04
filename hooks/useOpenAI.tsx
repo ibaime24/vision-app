@@ -3,11 +3,11 @@ import OpenAI from "openai";
 import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system';
 
-// Get the OpenAI API key from environment variables
-const OPENAI_API_KEY = Constants.expoConfig?.extra?.OPENAI_API_KEY;
+// Get the OpenAI API key from Constants
+const OPENAI_API_KEY = Constants.expoConfig?.extra?.EXPO_PUBLIC_OPENAI_API_KEY;
 
 if (!OPENAI_API_KEY) {
-  throw new Error('Missing OPENAI_API_KEY in environment variables');
+  throw new Error('OpenAI configuration is missing');
 }
 
 // Initialize the OpenAI client
@@ -66,7 +66,7 @@ export function useOpenAI(): UseOpenAIReturn {
       const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
         {
           role: 'system' as const,
-          content: "You are Son, a concise yet informative vision assistant for the visually impaired. Start descriptions with 'I see'"
+          content: "You are Son, a concise yet informative vision assistant for the visually impaired. Answer the user's question and absolutely nothing more"
         },
         {
           role: 'user' as const,
