@@ -29,10 +29,16 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# Environment variables. not all set up yet
+.env
+.env.*
+.env.local
+.env.development
+.env.test
+.env.production
 
 # typescript
 *.tsbuildinfo
 
+# misc
 app-example
