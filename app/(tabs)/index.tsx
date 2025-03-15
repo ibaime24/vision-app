@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, Pressable, Alert, Image } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
@@ -9,7 +9,9 @@ import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import { useWhispersAPI } from '../../hooks/useWhispersAPI';
 import { useOpenAI } from '../../hooks/useOpenAI';
 import { useElevenLabs } from '../../hooks/useElevenLabs';
-import { useHapticBeep } from '../../hooks/useHapticSecond'; // not ready for use
+import { BigCircleAnimated } from '../../components/BigCircleAnimated';
+import { BigCircleClosing } from '../../components/BigCircleClosing';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 /**
  * Main screen where user sees a continuous live camera feed.
@@ -18,6 +20,9 @@ import { useHapticBeep } from '../../hooks/useHapticSecond'; // not ready for us
  * - When the user releases, audio recording stops.
  * - Both photo & audio are then sent to the backend.
  */
+
+
+// First, define the type for the ref 
 export default function HomeScreen() {
   const [inputText, setInputText] = useState('');
   const { cameraRef, photoUri, photoBase64, takePicture } = useCamera();
@@ -26,6 +31,8 @@ export default function HomeScreen() {
   const { sendToOpenAI, aiResponse, status: openAIStatus } = useOpenAI();
   const { speakText, status: elevenLabsStatus, getAudioFromElevenLabs, playAudioFile } = useElevenLabs();
   const router = useRouter();
+  const circleRef = useRef<BigCircleAnimated | null>(null); 
+  const tabBarHeight = useBottomTabBarHeight();
 
   const playRecordedAudio = async (uri: string) => {
     try {
@@ -43,12 +50,21 @@ export default function HomeScreen() {
 
   const handlePressIn = async () => {
     try {
+      // Strong haptic on initial press
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      const photo = await takePicture();
-      if (!photo) {
-        throw new Error('Failed to capture photo');
-      }
-      await startRecording();
+      circleRef.current?.showEdges();
+
+      // Start photo and recording processes after a small delay
+      setTimeout(async () => {
+        const photoPromise = takePicture();
+        const recordingPromise = startRecording();
+
+        const photo = await photoPromise;
+        if (!photo) {
+          throw new Error('Failed to capture photo');
+        }
+        await recordingPromise;
+      }, 50);
     } catch (error) {
       Alert.alert('Error', 'Failed to start capture process');
     }
@@ -56,6 +72,10 @@ export default function HomeScreen() {
 
   const handlePressOut = async () => {
     try {
+      // Medium haptic on release
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      circleRef.current?.converge();
+      
       const startTime = Date.now();
       console.log('[HomeScreen] Starting process...');
 
@@ -111,14 +131,19 @@ export default function HomeScreen() {
           const audioFileUri = await getAudioFromElevenLabs(response);
           console.log(`[HomeScreen] ElevenLabs audio received: ${Date.now() - elevenLabsStart}ms`);
           
-          // Then play it
+          // Soft haptic when audio starts playing
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           console.log('[HomeScreen] Playing ElevenLabs audio...');
           const playStart = Date.now();
           await playAudioFile(audioFileUri);
+          
+          // After audio is done playing, hide the circle
+          circleRef.current?.hide();
           console.log(`[HomeScreen] Audio playback complete: ${Date.now() - playStart}ms`);
         } catch (speechError) {
           console.error('[HomeScreen] ElevenLabs error:', speechError);
           Alert.alert('Speech Error', 'Failed to convert text to speech');
+          circleRef.current?.hide();
         }
       }
 
@@ -128,6 +153,7 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('[HomeScreen] Error in handlePressOut:', error);
       Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
+      circleRef.current?.hide();
     }
   };
 
@@ -142,75 +168,47 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Always-on live camera feed. */}
+    <View style={styles.main}>
+      {/* Camera layer */}
       <CameraView
         style={styles.camera}
         ref={cameraRef}
       />
 
-      {/* Image Preview */}
+      {/* Full screen pressable area - above camera, below UI */}
+      <Pressable
+        style={[
+          StyleSheet.absoluteFill,
+          { 
+            zIndex: 1,  // Above camera, below UI
+            marginBottom: tabBarHeight, // Add space for tab bar
+          }
+        ]}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      />
+
+      {/* UI Elements */}
       {photoUri && (
-        <View style={styles.previewContainer}>
+        <View style={[styles.previewContainer, { zIndex: 2 }]}>  
           <Image 
             source={{ uri: photoUri }}
             style={styles.preview}
           />
         </View>
       )}
-
-      {/* Pressable area for capturing photo & audio */}
-      <Pressable
-        style={[
-          styles.recordButton,
-          isRecording && styles.recordingButton,
-          !hasPermission && styles.disabledButton
-        ]}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-      >
-        <Text style={styles.recordText}>
-          {getStatusText()}
-        </Text>
-      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  main: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  containerCentered: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    padding: 10,
+    backgroundColor: '#000', // Dark background for camera view
   },
   camera: {
-    flex: 1,
-  },
-  recordButton: {
-    position: 'absolute',
-    bottom: 400,
-    alignSelf: 'center',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    backgroundColor: 'red',
-    borderRadius: 10,
-  },
-  recordingButton: {
-    backgroundColor: '#ff4444',
-    transform: [{ scale: 1.1 }],
-  },
-  recordText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  disabledButton: {
-    backgroundColor: '#cccccc',
-    opacity: 0.7,
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
   },
   previewContainer: {
     position: 'absolute',
@@ -221,9 +219,34 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
     backgroundColor: 'rgba(0,0,0,0.3)',
     overflow: 'hidden',
+    zIndex: 2,
   },
   preview: {
     width: 120,
     height: 160,
+  },
+  pressableArea: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1, // Above camera, below UI
+  },
+  // Add any other styles used in your component
+  recordButton: {
+    position: 'absolute',
+    bottom: 20,
+    alignSelf: 'center',
+    padding: 20,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    zIndex: 2,
+  },
+  recordingButton: {
+    backgroundColor: 'rgba(255,0,0,0.3)',
+  },
+  recordText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
 });
