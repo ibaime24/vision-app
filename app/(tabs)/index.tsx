@@ -1,17 +1,17 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, Image } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Audio } from 'expo-av';
-import { useRouter } from 'expo-router';
 import { CameraView } from 'expo-camera';
-import { useCamera } from '../../hooks/useCamera';
+import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import React, { useRef, useState } from 'react';
+import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
-import { useWhispersAPI } from '../../hooks/useWhispersAPI';
-import { useOpenAI } from '../../hooks/useOpenAI';
+import { useCamera } from '../../hooks/useCamera';
 import { useElevenLabs } from '../../hooks/useElevenLabs';
+import { useOpenAI } from '../../hooks/useOpenAI';
+import { useWhispersAPI } from '../../hooks/useWhispersAPI';
 import { BigCircleAnimated } from '../../components/BigCircleAnimated';
 import { BigCircleClosing } from '../../components/BigCircleClosing';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 /**
  * Main screen where user sees a continuous live camera feed.
@@ -31,8 +31,9 @@ export default function HomeScreen() {
   const { sendToOpenAI, aiResponse, status: openAIStatus } = useOpenAI();
   const { speakText, status: elevenLabsStatus, getAudioFromElevenLabs, playAudioFile } = useElevenLabs();
   const router = useRouter();
-  const circleRef = useRef<BigCircleAnimated | null>(null); 
+  const circleRef = useRef<{ triggerAnimation: () => void } | null>(null); 
   const tabBarHeight = useBottomTabBarHeight();
+  const [showRedScreen, setShowRedScreen] = useState(false); // State to control red screen visibility
 
   const playRecordedAudio = async (uri: string) => {
     try {
@@ -52,7 +53,8 @@ export default function HomeScreen() {
     try {
       // Strong haptic on initial press
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      circleRef.current?.showEdges();
+      circleRef.current?.triggerAnimation(); // Correct method call
+      setShowRedScreen(true); // Show red screen immediately
 
       // Start photo and recording processes after a small delay
       setTimeout(async () => {
@@ -74,7 +76,7 @@ export default function HomeScreen() {
     try {
       // Medium haptic on release
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      circleRef.current?.converge();
+      circleRef.current?.triggerAnimation(); // Correct method call
       
       const startTime = Date.now();
       console.log('[HomeScreen] Starting process...');
@@ -138,12 +140,12 @@ export default function HomeScreen() {
           await playAudioFile(audioFileUri);
           
           // After audio is done playing, hide the circle
-          circleRef.current?.hide();
+          circleRef.current?.triggerAnimation(); // Correct method call
           console.log(`[HomeScreen] Audio playback complete: ${Date.now() - playStart}ms`);
         } catch (speechError) {
           console.error('[HomeScreen] ElevenLabs error:', speechError);
           Alert.alert('Speech Error', 'Failed to convert text to speech');
-          circleRef.current?.hide();
+          circleRef.current?.triggerAnimation(); // Correct method call
         }
       }
 
@@ -153,7 +155,10 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('[HomeScreen] Error in handlePressOut:', error);
       Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
-      circleRef.current?.hide();
+      circleRef.current?.triggerAnimation(); // Correct method call
+    } finally {
+      // After either success or failure, hide the red screen
+      setShowRedScreen(false); // Hide red screen
     }
   };
 
@@ -187,6 +192,11 @@ export default function HomeScreen() {
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
       />
+
+      {/* Red screen overlay */}
+      {showRedScreen && (
+        <View style={styles.redScreen} />
+      )}
 
       {/* UI Elements */}
       {photoUri && (
@@ -248,5 +258,10 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.5,
+  },
+  redScreen: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 0, 0, 0.8)', // Semi-transparent red
+    zIndex: 2, // Above everything else
   },
 });
