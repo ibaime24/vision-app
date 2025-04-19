@@ -106,7 +106,7 @@ Cognition uses your device's camera and microphone to let you ask questions abou
    eas submit --platform android
    ```
 
-## Technologies Used
+## Stack
 
 - React Native
 - Expo
@@ -126,8 +126,6 @@ Cognition uses your device's camera and microphone to let you ask questions abou
 - Check your API keys if AI features aren't working
 - For audio issues, check device volume and permissions
 
-## License
+## Disclaimer
 
-[Your chosen license]
-
-
+Cognition is designed solely to assist visually impaired users by providing AI-generated interpretations of visual surroundings. The accuracy and appropriateness of responses may vary based on image clarity, lighting conditions, and AI model limitations. Do not rely exclusively on this application for critical decisions or situations involving personal safety. Users must exercise caution and independent judgment. The developers and affiliated service providers assume no liability for consequences arising from reliance on the information provided by the app.
