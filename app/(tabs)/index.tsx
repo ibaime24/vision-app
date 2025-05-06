@@ -12,6 +12,8 @@ import { useOpenAI } from '../../hooks/useOpenAI';
 import { useWhispersAPI } from '../../hooks/useWhispersAPI';
 import { BigCircleAnimated } from '../../components/BigCircleAnimated';
 import { BigCircleClosing } from '../../components/BigCircleClosing';
+import { BlurView } from 'expo-blur';
+import Animated, { useSharedValue, withTiming, useAnimatedStyle } from 'react-native-reanimated';
 
 /**
  * Main screen where user sees a continuous live camera feed.
@@ -21,6 +23,8 @@ import { BigCircleClosing } from '../../components/BigCircleClosing';
  * - Both photo & audio are then sent to the backend.
  */
 
+// Design constants
+const ACCENT_COLOR = '#00C6FF'; // Fresh cyan accent
 
 // First, define the type for the ref 
 export default function HomeScreen() {
@@ -33,7 +37,13 @@ export default function HomeScreen() {
   const router = useRouter();
   const circleRef = useRef<{ triggerAnimation: () => void } | null>(null); 
   const tabBarHeight = useBottomTabBarHeight();
-  const [showRedScreen, setShowRedScreen] = useState(false); // State to control red screen visibility
+  const captureTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const overlayOpacity = useSharedValue(0); // For background dimming
+
+  // Animated style for background dim
+  const dimStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
 
   const playRecordedAudio = async (uri: string) => {
     try {
@@ -53,11 +63,13 @@ export default function HomeScreen() {
     try {
       // Strong haptic on initial press
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      circleRef.current?.triggerAnimation(); // Correct method call
-      setShowRedScreen(true); // Show red screen immediately
+      // Animate dimming overlay in
+      overlayOpacity.value = withTiming(0.2, { duration: 300 });
 
-      // Start photo and recording processes after a small delay
-      setTimeout(async () => {
+      // Start photo and recording processes **after 250ms**
+      captureTimeoutRef.current = setTimeout(async () => {
+        // Trigger radial pulse animation right as capture begins
+        circleRef.current?.triggerAnimation();
         const photoPromise = takePicture();
         const recordingPromise = startRecording();
 
@@ -66,7 +78,7 @@ export default function HomeScreen() {
           throw new Error('Failed to capture photo');
         }
         await recordingPromise;
-      }, 50);
+      }, 250);
     } catch (error) {
       Alert.alert('Error', 'Failed to start capture process');
     }
@@ -74,16 +86,22 @@ export default function HomeScreen() {
 
   const handlePressOut = async () => {
     try {
+      // If user released before capture started, cancel and reset UI
+      if (!isRecording) {
+        if (captureTimeoutRef.current) {
+          clearTimeout(captureTimeoutRef.current);
+          captureTimeoutRef.current = null;
+        }
+        // Reverse dim overlay
+        overlayOpacity.value = withTiming(0, { duration: 300 });
+        return; // Nothing else to do
+      }
       // Medium haptic on release
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       circleRef.current?.triggerAnimation(); // Correct method call
       
       const startTime = Date.now();
       console.log('[HomeScreen] Starting process...');
-
-      if (!isRecording) {
-        throw new Error('Recording was not properly started');
-      }
 
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const audioData = await stopRecording();
@@ -150,118 +168,4 @@ export default function HomeScreen() {
       }
 
       const totalTime = Date.now() - startTime;
-      console.log(`[HomeScreen] Total process time: ${totalTime}ms (${(totalTime/1000).toFixed(2)}s)`);
-
-    } catch (error) {
-      console.error('[HomeScreen] Error in handlePressOut:', error);
-      Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
-      circleRef.current?.triggerAnimation(); // Correct method call
-    } finally {
-      // After either success or failure, hide the red screen
-      setShowRedScreen(false); // Hide red screen
-    }
-  };
-
-  // Status text for UI
-  const getStatusText = () => {
-    if (!hasPermission) return 'Microphone Access Required';
-    if (isRecording) return 'Recording...';
-    if (whisperStatus === 'uploading') return 'Transcribing...';
-    if (openAIStatus === 'loading') return 'Processing AI...';
-    if (elevenLabsStatus === 'loading') return 'Speaking...';
-    return 'Hold to Record';
-  };
-
-  return (
-    <View style={styles.main}>
-      {/* Camera layer */}
-      <CameraView
-        style={styles.camera}
-        ref={cameraRef}
-      />
-
-      {/* Full screen pressable area - above camera, below UI */}
-      <Pressable
-        style={[
-          StyleSheet.absoluteFill,
-          { 
-            zIndex: 1,  // Above camera, below UI
-            marginBottom: tabBarHeight, // Add space for tab bar
-          }
-        ]}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-      />
-
-      {/* Red screen overlay */}
-      {showRedScreen && (
-        <View style={styles.redScreen} />
-      )}
-
-      {/* UI Elements */}
-      {photoUri && (
-        <View style={[styles.previewContainer, { zIndex: 2 }]}>  
-          <Image 
-            source={{ uri: photoUri }}
-            style={styles.preview}
-          />
-        </View>
-      )}
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  main: {
-    flex: 1,
-    backgroundColor: '#000', // Dark background for camera view
-  },
-  camera: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 0,
-  },
-  previewContainer: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#fff',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    overflow: 'hidden',
-    zIndex: 2,
-  },
-  preview: {
-    width: 120,
-    height: 160,
-  },
-  pressableArea: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 1, // Above camera, below UI
-  },
-  // Add any other styles used in your component
-  recordButton: {
-    position: 'absolute',
-    bottom: 20,
-    alignSelf: 'center',
-    padding: 20,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    zIndex: 2,
-  },
-  recordingButton: {
-    backgroundColor: 'rgba(255,0,0,0.3)',
-  },
-  recordText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  redScreen: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 0, 0, 0.8)', // Semi-transparent red
-    zIndex: 2, // Above everything else
-  },
-});
+      console.log(`[HomeScreen] Total process time: ${totalTime}ms (${(totalTime/1000).toFixed(2)}s)`
