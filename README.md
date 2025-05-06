@@ -19,4 +19,3 @@ Using your own device is required when testing.
    ```
 3. Scan the expo app! 
 
-

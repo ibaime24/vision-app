@@ -1,0 +1,352 @@
+Expo SDK 53
+Apr 30, 2025 by
+
+Brent Vatne
+Brent Vatne
+
+Today we're announcing the release of Expo SDK 53. SDK 53 includes React Native 0.79. Thank you to everyone who helped with beta testing.
+
+Expo SDK 53 is released. SDK 53 includes React Native 0.79
+The New Architecture is now default everywhere
+In SDK 53, the New Architecture is enabled by default in all projects. You can opt out if you aren’t yet ready to adopt it yet. We are confident that migrating to the New Architecture now is the right move for most projects. As of the time of writing, the New Architecture was enabled in 74.6% of the SDK 52 projects built on EAS Build in April, 2025.
+
+The New Architecture is enabled by default in all projects
+For a more thorough account of the details, read the “Out with the old, in with the New Architecture (by default)” blog post.
+
+Learn about migrating to the New Architecture, including known issues in third-party libraries.
+Learn how to opt out — this may be useful to upgrade to SDK 53 and enable the New Architecture in separate steps.
+If there are any issues blocking you from migrating to the New Architecture, create an issue on expo/expo, and opt out until the issue is resolved.
+Rolling out edge-to-edge by default for new Android projects
+Visualization of edge-to-edge on a device
+We have been working with @zoontek to help ship react-native-edge-to-edge, a library that “effortlessly enables edge-to-edge display in React Native, allowing your Android app content to flow seamlessly beneath the system bars.” This has become increasingly important, because Google has announced that opting out of edge-to-edge will no longer be possible in Android 16 (due in June).
+
+Android 15 enforced edge-to-edge for apps targeting Android 15 (API level 35), but your app could opt-out by setting R.attr#windowOptOutEdgeToEdgeEnforcement to true. For apps targeting Android 16 (API level 36), R.attr#windowOptOutEdgeToEdgeEnforcement is deprecated and disabled, and your app can't opt-out of going edge-to-edge.
+In SDK 53, edge-to-edge on Android is now:
+
+enabled by default in the Expo Go app, with no opt-out.
+enabled by default in all new projects, with opt-out available outside of Expo Go.
+disabled by default in all existing projects outside of Expo Go, with opt-in available and encouraged.
+Looking to the future, in SDK 54, edge-to-edge will be the default for new and existing projects. Learn more about edge-to-edge and Expo.
+
+Improved background tasks
+Goodbye background-fetch, hello expo-background-task
+Our new module expo-background-task uses the latest APIs on Android and iOS and deprecates the expo-background-fetch module, which was based on now deprecated platform APIs. The new package supports running deferrable tasks in the background in a way that optimizes power usage on the end user’s device. Expo Background Task uses the WorkManager API on Android and the BGTaskScheduler API on iOS.
+
+Using this package, you can run tasks when your app is in the background and perform operations like downloading data, running Expo Updates to check for and download new versions (you should do this!), or perform routine operations like cleaning up your database or uploading local data at regular intervals. Learn more.
+
+
+Copy
+
+import * as TaskManager from 'expo-task-manager';
+import * as BackgroundTask from 'expo-background-task';
+import * as Updates from 'expo-updates';
+
+const BACKGROUND_TASK_NAME = 'task-run-expo-update';
+
+TaskManager.defineTask(BACKGROUND_TASK_NAME, async () => {
+  const update = await Updates.checkForUpdateAsync();
+  if (update.isAvailable) {
+    await Updates.fetchUpdateAsync();
+
+    // You may not want to reload the app while it is backgrounded, this
+    // will impact the user experience if your app state isn't saved
+    // and restored.
+    await Updates.reloadAsync();
+  }
+});
+
+async function registerTask() {
+	const isRegistered = TaskManager.isTaskRegisteredAsync(BACKGROUND_TASK_NAME);
+	if (!isRegistered) {
+	  await BackgroundTask.registerTaskAsync(BACKGROUND_TASK_NAME, {
+	    minimumInterval: 30, // Try to repeat every 30 minutes while backgrounded
+	  });
+	}
+}
+
+registerTask();
+The package.json:exports field is now enabled by default in Metro bundler
+In React Native 0.79, the Metro team switched the package.json exports field support to enabled by default — this was first available in React Native 0.72. You can opt out of this in your app by specifying unstable_enablePackageExports: false if you run into related issues. Learn more about Metro’s ES Module resolution.
+
+If libraries that you depend on are incompatible with this change, it may be very obvious (you could see errors such as "... attempted to import the Node standard library module ..."), but it may manifest in subtle ways in your app. We encourage you to report any known libraries to this discussion, to help the community know which libraries are impacted and work towards fixing them.
+
+For example, one possible issue is caused by what’s known as the dual package hazard — your app may end up importing both the ESM and CommonJS versions of a library, and if that library is stateful then you will have two independent copies of it with different state when they are loaded. If you are a library author and use react-native-builder-bob, we recommend following their guide to adapt to this change.
+
+A good way to understand if your app is impacted by this particular issue, and in general to investigate all classes of bundling related issues, is to analyze your bundle with Expo Atlas. In the following screenshot, there are commonjs and module copies of @react-navigation packages (the particular issue has already resolved, and it is only included here for the sake of demonstration).
+
+Visualization of bundle contents with Expo Atlas
+Exploring an app bundle using Expo Atlas, we can see the same source files are included multiple times for a single package, both under “commonjs” and “module”.
+
+Highlights
+React Native 0.79 with React 19 and React Native Web 0.20.0. Refer to the release notes for React Native 0.79 and React 19 release notes for detailed information. There are some great features in React 19 — such as Suspense for loading states and use for contexts and promises, so be sure to read up on it! Also, learn more about the Expo SDK policy for tracking React Native versions.
+Development builds can now be deployed to TestFlight. More information available in facebook/react-native#49154. This can be a good alternative to using ad hoc distribution, which requires registering every device by UDID to distribute development builds. Try it out with the new npx testflight package if you use EAS — set "distribution": "store" on your development profile and add "development": {} as a submit profile in eas.json, then then run npx testflight --profile development .
+Stable release of new expo-audio library. We released the beta for expo-audio in SDK 52 and received a lot of great feedback. We spent the last SDK cycle incorporating that feedback and making other improvements to the library, and now we're ready to call it stable! We recommend migrating to it from expo-av now. It is more reliable, easier to use, more performant, and more powerful than Audio component from expo-av. Learn more about expo-audio.
+New expo-maps package alpha release. This library aims to provide wrappers for the platform standard APIs for maps — Google Maps on Android and Apple Maps for iOS. It is built on top of the modern Jetpack Compose and Swift UI APIs for each component. Keep in mind that the minimum iOS version required to use the library is currently iOS 17. Support for older versions than iOS 17 likely won’t be possible, due to limitations of the Swift UI API. We also do not intend to support Google Maps on iOS in this library. We’re excited about expo-maps because, like with our Camera, Video, and Audio libraries, it will be built with our philosophy of providing a stable, consistent, and reliable interface to the most common use cases that most apps will need. Other maps libraries in the ecosystem can focus on filling in more specific and uncommon use cases that a smaller set of app developers may need. Learn more.
+Improve Android build times with prebuilt Expo Modules. Build time significantly impacts daily development. Recently, we announced that we’ve improved the iOS build time by upgrading our hardware — now it's time for Android. By precompiling some of our Expo Modules for Android in this SDK, you will experience up to a 25% reduction in build time locally (depending on your hardware). The improvements are currently more modest on EAS, but they enable us to build a more robust caching mechanism for EAS and further improve build times. By default, this feature is enabled when using a new project template — when you run an Android build, you will notice the [📦] prefix next to packages that are precompiled. You can opt out by passing buildFromSource to Expo Autolinking configuration:
+
+Copy
+
+{
+  "name": "opt-out-example",
+  "dependencies": {},
+  "expo": {
+    "autolinking": {
+      "android": {
+        "buildFromSource": [
+          ".*"
+        ]
+      }
+    }
+  }
+}
+expo-updates now allows you to override headers at runtime with Updates.setUpdateURLAndRequestHeadersOverride() , giving you full control over updates on the client side (use it with caution). The expo-updates library was intentionally built with guardrails to minimize the risk of accidentally bricking your app, but there are sometimes cases where you would prefer to trade off these protections in favor of control, for example to enable the ability to allow a client to switch between updates (such as in a preview build for internal employees). Learn more.
+expo-updates for Android no longer copies embedded assets on launch. Prior to SDK 53, expo-updates would copy assets to its own cache directory to ensure consistency in asset paths and sidestep issues that could arise from differences in accessing files from app resources and storage. We have learned that this has some undesirable side effects, such as introducing the possibility of ANRs on launch in some circumstances. So, we found a way to safely avoid skipping copying assets, and now apps using expo-updates on Android should not experience any related ANRs and are also likely to see faster startup times (in our test project, the startup procedure that updates orchestrates was reduced from ~300ms to ~100ms). If you find that this causes any regressions in your app, you can roll back to the previous behavior by setting EX_UPDATES_COPY_EMBEDDED_ASSETS=true. Learn more in expo#36059.
+React Server Functions support is now in beta. You can now deploy React Server Functions to production with EAS Hosting and the new EXPO_UNSTABLE_DEPLOY_SERVER environment variable, along with setting experiments.reactServerFunctions to true in your app config. Learn more.
+Expo Modules for TV and macOS improvements: the primary platforms supported by Expo are currently Android, iOS, and web, and we also invest in tvOS and Android TV through the react-native-tvos project. In Expo Orbit, we target macOS with the react-native-macos project and we have built support for this platform into parts of the Expo SDK and Expo Modules APIs as needed for our development and maintenance of Orbit. In SDK 53, we added support for macOS AppDelegate subscribers and users can now extend directly from ExpoAppDelegate for an easier setup. Learn more about Expo Module TV and macOS platform support.
+expo-file-system/next now integrates with expo/fetch for file uploads with file.blob(). Learn more.
+expo-sqlite now includes experimental support for web. It uses a WebAssembly build of SQLite based on wa-sqlite, with a few additions. To learn more about other details of the implementation, see expo#35207. To learn how to use it, refer to the documentation.
+expo-sqlite now supports libsql, and in collaboration with Turso we’ve shipped support for their Offline Sync Public Beta. Give it a try and provide feedback to the Turso team to help the product grow! Learn more in this example repository and its accompanying YouTube video.
+expo-notifications improvements: Custom images and icons are now supported in Expo Push Service for Android. The iOS implementation of expo-notifications has been almost entirely converted to Swift and Expo Modules API. This makes it easier to navigate and further improve in the future, as we continue to invest in solidifying the notifications tooling for Expo projects.
+Add import.meta transform plugin. This is an experimental opt-in feature, you can turn it on with the unstable_transformImportMeta option in the babel-preset-expo configuration (example). This was added in order to improve ESM integration and specifically to better support LiveStore.
+AppDelegate has moved from Objective-C to Swift. Config Plugins that modify the AppDelegate source code will need to be updated to make Swift modifications rather than Objective-C. The main use case for this is to subscribe to AppDelegate events, learn more about how we suggest handling this.
+Bumped the recommend TypeScript version to ~5.8.3. We also now use this version in the expo repository.
+Experimental opt-in React 19.1 support with improved errors available. React 19.1 ships with Owner Stack API which "helps identify which components are responsible for rendering a particular component”. You can try it out by toggling experiments.reactCanary to true in your app config.
+Expo CLI
+Flat config support in eslint-config-expo. npx expo lint now supports flat config, but you don’t have to migrate yet if you don’t want to. Learn how to migrate.
+Expo Atlas has been promoted from experimental to stable. You can enable it with EXPO_ATLAS=1 npx expo to investigate your JavaScript bundle and improve the app size. Learn more about Atlas.
+Added experimental support for web workers on web. This is used in expo-sqlite for multi-threaded web support. Native apps can still use native modules and Reanimated worklets to run JavaScript off the main thread. Learn more about web workers in Expo projects.
+Added experimental EAS Update support to Expo DOM components. You can now update your DOM components with eas update — be sure to test this in a staging build before updating your DOM components in production, and report any issues to us.
+Improved error messages. React errors will now be human-readable in Expo CLI. This makes it easier to ⌘+click into a file and jump directly to the related line of code.
+
+Copy
+
+Error: Couldn't find the bottom tab bar height. Are you inside a screen in Bottom Tab Navigator?
+
+This error is located at:
+
+  20 |
+  21 | export default function ParallaxScrollView({
+> 22 |   children,
+     |           ^
+  23 |   headerImage,
+  24 |   headerBackgroundColor,
+  25 | }: Props) {
+
+Call Stack
+  ParallaxScrollView (components/ParallaxScrollView.tsx:22:11)
+  HomeScreen(./(tabs)/index.tsx) (<anonymous>)
+  Suspense (<anonymous>)
+  RCTView (<anonymous>)
+  RCTView (<anonymous>)
+  RNSScreen (<anonymous>)
+  Suspense (<anonymous>)
+  RNSScreenNavigationContainer (<anonymous>)
+  RCTView (<anonymous>)
+  TabLayout (app/(tabs)/_layout.tsx:12:37)
+Expo Router
+Added build-time redirects and rewrites. These can be used for customizing the URL and routing as of your app and website. This is especially useful for migrating existing projects to Expo Router. Learn more.
+Guarded Groups. Client side routes can be grouped together and protected by a guard function. Routes that fail the guard will redirect to the anchor route. Learn more.
+Prefetching Routes. Prefetching allows a route to be fetched and loaded in the background. It is available as a prop on <Link /> or an option in the imperative API. Learn more.
+Make authentication and other flows using an initial redirect easier to build. Apps are now wrapped in a virtual root navigator to ensure all navigation events can be processed.
+Improved documentation. We're happy to share our much improved new Expo Router documentation. For example, check out the "Router 101" section to shore up your foundational router knowledge.
+🧪 Experiments
+Improved Swift UI and Jetpack Compose integration, powering a prototype of a new Expo UI package
+A screenshot that demonstrates usage of Expo UI with Swift UI
+We think that building this interface should only take a couple minutes in your Expo iOS app. We aren't quite there yet with Expo UI, but we hope to get there soon. Source code.
+
+Expo UI aims to give developers easy access to native UI components from Jetpack Compose and SwiftUI. It will include essential platform primitives—like toggles, sliders, context menus, pickers, and lists—to complement existing community libraries built around Android Views and iOS UIKit.
+
+That said, this library is currently an early prototype — it’s experimental, and it’s changing quickly. APIs that you are using today may change tomorrow! Swift UI and Jetpack Compose are not yet widely used in the React Native ecosystem, and we’ve been exploring some unique approaches to integrating with these tools. You will find issues and limitations, and we encourage you to report them! Needless to say, we don’t recommend using this in production yet.
+
+More information will be coming soon about the improved Swift UI and Jetpack Compose integration, you can learn more about Expo UI in the API reference, and see examples on GitHub. We’ll be continuously releasing updates to Expo UI during the SDK 53 cycle and you can expect to see a blog post in the near future with a roundup of improvements.
+
+Remote caching for local builds
+The new experiments.remoteBuildCache config will enable remote caching for your local builds, so you never have to re-compile a project if you or any of your teammates have already created a build with a matching fingerprint. You can implement your own cache provider, or use a prebuilt provider like GitHub (example) or EAS (example).
+
+
+This video demonstrates what this flow looks like in action. Most of the cold cache build time was cut from the video, nobody needs to see that.
+During this initial experiment period, we’ve limited the number of cached builds with the EAS provider to 10 on the free and on demand plans, 50 with the production plan, and 100 with the enterprise plan (per billing cycle). We’ll adjust this as the feature moves towards a stable release. Try out the GitHub provider if this is limiting for you, or build your own!
+
+Let us know if this is useful for you and your team, and any other thoughts you have about similar tools we can build to help improve the speed of your development workflow.
+
+Deprecations & removals
+expo-av: the Video component was replaced by expo-video in SDK 52 and the Audio API is replaced by expo-audio in SDK 53. The expo-av package will no longer be maintained and we will not publish any new versions for SDK 54 and beyond. Learn more about expo-video.
+expo-background-fetch: this library has been replaced by expo-background-task, which uses modern platform APIs. Learn more about expo-background-task.
+jsEngine field in app config has been deprecated: JavaScriptCore support in React Native core has been deprecated in react-native@0.79 and will be removed in the near future (learn more in RFC0836). It will still be possible to use JavaScriptCore in your app through the @react-native-community/javascriptcore package. No action is required at the moment — but in SDK 54 you will likely need to move to this package instead of using jsEngine: 'jsc' in your app config.
+Push notifications are no longer supported in Expo Go for Android, after being deprecated in SDK 52. We’ve found that there has been a lot of confusion about why notifications would work in Expo Go but not in a development build or a production build of the same project. This is because it’s not possible for Expo or EAS to automatically configure notifications outside of the controlled environment of Expo Go. So users often ended up surprised about notifications requiring additional setup for use outside of Expo Go, which was often when they were already at a pivotal point in their project — either deploying or maturing from a prototype to a development build. We still support push notifications in Expo Go for iOS because we are able to automatically configure it for you when using EAS. Learn how to set up notifications.
+React DevTools has been removed from Expo CLI: now that it is available through React Native DevTools, we’ve removed it from the Expo CLI interactive prompt (it’s no longer listed in the plugins when you press shift+m) in order to consolidate on a single version. Press j to launch React Native DevTools, and you will find React DevTools there.
+Node 18 reached End-Of-Life (EOL) on April 30, 2025. We recommend you use at least Node 20 for SDK 53 projects.
+Notable breaking changes
+React 19 comes with some breaking changes, which you can learn more about in the React 19 upgrade guide — note that you may skip over the web-specific instructions in the guide.
+Internal imports in React Native were updated to export syntax. If importing from within the React Native package with require a nested path (react-native/x/y), you may need to update your imports. Refer to the examples from the React Native 0.79 blog post to more.
+package.json exports and imports now enabled by default as of React Native 0.79. More information is available above under the “The package.json exports field is now enabled by default in Metro bundler” heading in this post, and in the ES Module resolution section of our Metro documentation.
+Updated default AppTheme. New native Android projects and projects generated with CNG is now use the DayNight theme: expo#33964. This change was made in order to facilitate the rollout of edge-to-edge layout, for compatibility with react-native-edge-to-edge.
+Edge-to-edge is enabled by default in new projects and in Expo Go for Android. We encourage all projects to adopt it soon, before Android makes it mandatory. Learn more.
+Deprecated setImmediate polyfill has been removed from the runtime.
+Android package name is no longer automatically added as a linking scheme in prebuild. This behavior existed for legacy reasons, and it is no longer a reasonable default. If you would like to continue including your package name as a deep linking scheme, you can add it under the android key in your app config: "android": { "scheme": ["your.package.name"] }.
+Expo Application Services (EAS)
+EAS are cloud services for CI/CD with Expo and React Native apps — you don't need to use them to build apps with Expo or React Native, but we think they are incredibly useful! There are several updates to EAS that are relevant to SDK 53:
+
+EAS Build now uses frozen lockfiles by default for SDK 53+ projects. Depending on the package manager that you use, the appropriate command/flag will be use when installing Node modules — npm ci, yarn install --frozen-lockfile (and modern equivalents), pnpm install --frozen-lockfile, etc. You can opt out of using frozen lockfiles by setting EAS_NO_FROZEN_LOCKFILE=1 in your project environment variables.
+Added upload and download commands that are used under the hood for remote build cache. For example, run npx expo run:ios and then eas upload to share the build by URL. Run eas build:download to download a build.
+“Build comparison” and “Fingerprint comparison” views help you understand your project and troubleshoot issues. We now store fingerprints for each build and update, which you can compare directly with a diff view on expo.dev (or by running eas fingerprint:compare). This can be useful to understand why a fingerprint is changing when you don’t expect it to, and to make decisions about when to bump your runtime version in order to safely deploy an update. We’ve also added a similar “compare” view to builds. We’ve found that diffing build logs (which I’ve always done manually, by copying and pasting into a diff tool) is an invaluable first step when trying to figure out the answer to the question “why did this build failure when a previous build succeeded?” — so we built it into EAS. Press the “Compare” button on a fingerprint or build page to give it a try.
+Comparison views for fingerprints and builds
+Update download count and average download size now listed on update group details. This shows the number of downloads and average size of the update download (the app bundle and any related assets that were included and not yet on the local device).
+A screenshot demonstrating download counts and average sizes
+Known issues
+React 18 peer dependencies can lead to multiple react installations. Many libraries have peer dependencies on React 18 — even though they are likely compatible with React 19. To prevent npm from installing multiple copies of react, which will cause runtime errors, you may need to add overrides to your package.json (In Yarn the equivalent field is named resolutions. With pnpm it's resolutions or pnpm.overrides) to ensure every library uses the same single version of React.
+Some libraries are incompatible with Metro ES Module resolution, which is used now that React Native 0.79 enables package.json:exports by default. For example, there are known issues with @supabase/supabase-js and @firebase/* packages. You can work around this for now by opting out of this feature, learn more. We encourage you to also report any incompatibilities that you find.
+Snack does not yet support SDK 53. This is coming soon.
+Known regressions
+Found an issue? Report a regression.
+➡️ Upgrading your app
+Here's how to upgrade your app to Expo SDK 53 from 52:
+
+Update to the latest version of EAS CLI (if you use it):
+
+Copy
+
+npm i -g eas-cli
+Upgrade all dependencies to match SDK 53:
+
+Copy
+
+npx expo install expo@^53.0.0 --fix
+If you have any resolutions/overrides in your package.json, verify that they are still needed. For example, you should remove metro and metro-resolver overrides if you added them for expo-router in a previous SDK release. Additionally, if you previously configured your metro.config.js to work well in a monorepo, we recommend reading the updated Work with monorepos guide to see if you need to make any changes
+Check for any possible known issues:
+
+Copy
+
+npx expo-doctor@latest
+Refer to the "Deprecations, renamings, and removals" section above for breaking changes that are most likely to impact your app.
+Make sure to check the changelog for all other breaking changes!
+Upgrade Xcode if needed: Xcode 16 is needed to compile the native iOS project. We recommend Xcode 16.2+ for SDK 53. For EAS Build, projects without any specified image will default to Xcode 16.3.
+If you use Continuous Native Generation:
+Delete the android and ios directories if you generated them for a previous SDK version in your local project directory. They'll be re-generated next time you run a build, either with npx expo run:ios, npx expo prebuild, or with EAS Build.
+If you don't use Continuous Native Generation:
+Run npx pod-install if you have an ios directory.
+Apply any relevant changes from the Native project upgrade helper.
+Optionally, you could consider adopting prebuild for easier upgrades in the future.
+If you use development builds with expo-dev-client: Create a new development build after upgrading.
+If you use Expo Go: Consider migrating to a development builds. Expo Go is not recommended as a development environment for production apps.
+Having trouble? Refer to the Troubleshooting your SDK upgrade guide.
+Questions? Join our weekly office hours on Wednesdays at 12:00PM Pacific on Discord.
+
+
+
+
+FROM GITHUB: 
+"Libraries that are incompatible with Metro ES Module resolution #36551
+brentvatne started this conversation in Proposals and Ideas
+Libraries that are incompatible with Metro ES Module resolution
+#36551
+@brentvatne
+brentvatne
+5 days ago · 8 comments · 13 replies
+Return to top
+
+brentvatne
+5 days ago
+Maintainer
+In React Native 0.79, the Metro team switched the package.json exports field support to enabled by default — this was first available in React Native 0.72. You can opt out of this in your app by specifying unstable_enablePackageExports: false if you run into related issues. Learn more about Metro’s ES Module resolution.
+
+If libraries that you depend on are incompatible with this change, it may be very obvious (you could see errors such as "... attempted to import the Node standard library module ..."), but it may manifest in subtle ways in your app.
+
+In this discussion, please report any libraries that you have found to be incompatible. Use the following template:
+
+Library name: -
+Version: -
+Error message: -
+How to reproduce: -
+Workarounds
+If you are impacted by this change, you can work around the incompatibilities by disabling package.json:exports in your Metro config, eg:
+
+// metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+/** @type {import('expo/metro-config').MetroConfig} */
+const config = getDefaultConfig(__dirname);
+
+config.resolver.unstable_enablePackageExports = false;
+
+module.exports = config;
+If the impacted package uses package.json:exports and has a browser version available, you can also tell Metro to use this browser version until the package is fixed for React Native.
+
+// metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+/** @type {import('expo/metro-config').MetroConfig} */
+const config = getDefaultConfig(__dirname);
+
+config.resolver.resolveRequest = function packageExportsResolver(context, moduleImport, platform) {
+  // Use the browser version of the package for React Native 
+  if (moduleImport === '<package>' || moduleImport.startsWith('<package>/')) {
+    return context.resolveRequest(
+      {
+        ...context,
+        unstable_conditionNames: ['browser'],
+      },
+      moduleImport,
+      platform,
+    );
+  }
+
+  // Fall back to normal resolution
+  return context.resolveRequest(context, moduleImport, platform);
+};
+
+module.exports = config;
+Replies:8 comments · 13 replies
+
+brentvatne
+5 days ago
+Maintainer
+Author
+Library name: @supabase/supabase-js (actually @supabase/realtime-js, but that is included transitively by the former)
+Version: Reproduced on 2.49.4 (latest)
+Error message:
+The package at "node_modules\ws\lib\stream.js" attempted to import the Node standard library module "stream".
+How to reproduce: npx expo install @supabase/supabase-js and then import it import { createClient } from '@supabase/supabase-js'
+1 reply
+@byCedric
+byCedric
+3 days ago
+Maintainer
+Supabase is aware of the issue and has a path forward. See supabase/supabase-js#1400 (comment) for more info.
+
+
+brentvatne
+5 days ago
+Maintainer
+Author
+Library name: kysely
+Version: 0.28.2
+Error message:
+/var/folders/cb/1mtd_ssd4v1bjj3p5q2xs4hr0000gn/T/expo-bundler-0.512785974229343-1746138053339/index.js:148356:37: error: Invalid expression encountered
+              var migration = yield import(/* webpackIgnore: true */(0, _classPrivateFieldLooseBase2.default)(this, _props)[_props].path.join((0, _classPrivateFieldLooseBase2.default)(this, _props)[_props].migrationFolder, fileName));
+                                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Emitted 1 errors. exiting.
+Error: /Users/ark/Desktop/Code/expo-kysely-repro/node_modules/react-native/sdks/hermesc/osx-bin/hermesc -emit-binary -out /var/folders/cb/1mtd_ssd4v1bjj3p5q2xs4hr0000gn/T/expo-bundler-0.512785974229343-1746138053339/index.hbc /var/folders/cb/1mtd_ssd4v1bjj3p5q2xs4hr0000gn/T/expo-bundler-0.512785974229343-1746138053339/index.js -O exited with non-zero code: 2
+How to reproduce: this minimal example - https://github.com/goknsh/expo-kysely-repro - ref Can't build Kysely on SDK 53 #36544
+2 replies
+@igalklebanov
+igalklebanov
+4 days ago
+Hey 👋
+
+The error is caused by a dynamic import in optional database migrations primitives. We can't use environment-specific APIs, so require is a no-go. We can't ship breaking changes soon as we just recently released v0.28.
+
+@goknsh created kysely-org/kysely#1452. It requires a CJS build.
+
+We want to get rid of CJS (dual package) and ship ESM only (many libraries already started doing that since require(esm) became a thing, and Node.js 18 reached EoL).
+
+We want to keep supporting expo / react-native.
+
+@brentvatne
+brentvatne
+4 days ago
+Maintainer
+Author
+cc @huntie
+
+"
