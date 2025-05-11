@@ -35,12 +35,13 @@ const ProcessingCircle = forwardRef<ProcessingCircleRef, ProcessingCircleProps>(
     // Base animation configuration
     const config = {
       appear: {
-        scale: { to: 1, duration: 300, easing: Easing.out(Easing.cubic) },
-        opacity: { to: .85, duration: 200 }
+        scale: { to: .7, duration: 300, easing: Easing.out(Easing.cubic) },
+        opacity: { to: .85, duration: 300 }
       },
       processing: {
+        scale: { to: .8, duration: 400, easing: Easing.out(Easing.cubic) },
         pulse: { min: 0.8, max: 1.3, duration: 2000 },
-        opacity: { to: 1, duration: 150 }
+        opacity: { to: 1, duration: 400 }
       },
       complete: {
         scale: { to: 1.4, duration: 400 },
@@ -48,7 +49,7 @@ const ProcessingCircle = forwardRef<ProcessingCircleRef, ProcessingCircleProps>(
       },
       reset: {
         scale: { to: 0, duration: 300 },
-        opacity: { to: 0, duration: 200 }
+        opacity: { to: 0, duration: 300 }
       }
     };
 
@@ -57,6 +58,9 @@ const ProcessingCircle = forwardRef<ProcessingCircleRef, ProcessingCircleProps>(
       
       switch (phase) {
         case 'appear':
+          opacity.value = 0;
+          scale.value = 0;
+          
           scale.value = withTiming(config.appear.scale.to, {
             duration: config.appear.scale.duration,
             easing: config.appear.scale.easing
@@ -67,6 +71,10 @@ const ProcessingCircle = forwardRef<ProcessingCircleRef, ProcessingCircleProps>(
           break;
 
         case 'processing':
+          scale.value = withTiming(config.processing.scale.to, {
+            duration: config.processing.scale.duration,
+            easing: config.processing.scale.easing
+          });
           pulse.value = withRepeat(
             withTiming(config.processing.pulse.max, {
               duration: config.processing.pulse.duration,
@@ -95,8 +103,10 @@ const ProcessingCircle = forwardRef<ProcessingCircleRef, ProcessingCircleProps>(
           });
           opacity.value = withTiming(config.reset.opacity.to, {
             duration: config.reset.opacity.duration
-          }, () => cb && runOnJS(cb)());
-          pulse.value = 1;
+          }, () => {
+            pulse.value = 1;
+            cb && runOnJS(cb)();
+          });
           break;
       }
     };
