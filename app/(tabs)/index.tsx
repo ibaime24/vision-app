@@ -10,10 +10,14 @@ import { useCamera } from '../../hooks/useCamera';
 import { useElevenLabs } from '../../hooks/useElevenLabs';
 import { useOpenAI } from '../../hooks/useOpenAI';
 import { useWhispersAPI } from '../../hooks/useWhispersAPI';
-import { BigCircleAnimated } from '../../components/BigCircleAnimated';
-import { BigCircleClosing } from '../../components/BigCircleClosing';
+import ProcessingCircle, { ProcessingCircleRef } from '../../components/ProcessingCircle';
 import { BlurView } from 'expo-blur';
-import Animated, { useSharedValue, withTiming, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { 
+  useSharedValue, 
+  withTiming, 
+  useAnimatedStyle,
+  runOnJS 
+} from 'react-native-reanimated';
 
 /**
  * Main screen where user sees a continuous live camera feed.
@@ -62,19 +66,6 @@ export async function playSystemClick() {
   }
 }
 
-// 200 ms, 880 Hz sine "beep"
-const BEEP_BASE64 =
-  'UklGRqYAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YWqYA...';
-
-export async function playBeep() {
-  const { sound } = await Audio.Sound.createAsync({
-    uri: `data:audio/wav;base64,${BEEP_BASE64}`,
-  });
-  await sound.playAsync();
-  sound.setOnPlaybackStatusUpdate(async s => {
-    if (s.isLoaded && s.didJustFinish) await sound.unloadAsync();
-  });
-}
 
 // First, define the type for the ref 
 export default function HomeScreen() {
@@ -86,11 +77,11 @@ export default function HomeScreen() {
   const { sendToOpenAI, aiResponse, status: openAIStatus } = useOpenAI();
   const { speakText, status: elevenLabsStatus, getAudioFromElevenLabs, playAudioFile } = useElevenLabs();
   const router = useRouter();
-  const circleRef = useRef<{ triggerAnimation: () => void } | null>(null); 
   const tabBarHeight = useBottomTabBarHeight();
   const captureTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const overlayOpacity = useSharedValue(0);          // default 0
+  const overlayOpacity = useSharedValue(0);
   const processingIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const processingCircleRef = useRef<ProcessingCircleRef>(null);
 
   // Animated style for background dim
   const dimStyle = useAnimatedStyle(() => ({
@@ -113,20 +104,26 @@ export default function HomeScreen() {
 
   const handlePressIn = async () => {
     try {
+      // Reset animation states and wait for completion before starting APPEAR
+      processingCircleRef.current?.triggerReset(() => {
+        console.log('[HomeScreen] RESET complete, starting APPEAR');
+        processingCircleRef.current?.triggerAppear();
+      });
+      
       // Strong haptic on initial press
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      circleRef.current?.triggerAnimation(); // Correct method call
+      playEarcon('press');
+      
       // Animate dimming overlay in
       overlayOpacity.value = withTiming(0.1, { duration: 300 });
 
-      // Start photo and recording processes **after 250ms**
+      // Start photo and recording processes after 250ms
       captureTimeoutRef.current = setTimeout(async () => {
         const photoPromise = takePicture();
         const photo = await photoPromise;
         if (!photo) {
           throw new Error('Failed to capture photo');
         }
-        playEarcon('press'); // Play press sound when recording starts
         await startRecording();
       }, 250);
     } catch (error) {
@@ -144,17 +141,17 @@ export default function HomeScreen() {
         }
         // Reverse dim overlay
         overlayOpacity.value = withTiming(0, { duration: 300 });
-        return; // Nothing else to do
+        return;
       }
+
       // Medium haptic on release
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      circleRef.current?.triggerAnimation(); // Correct method call
       
       const startTime = Date.now();
       console.log('[HomeScreen] Starting process...');
 
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      playEarcon('done'); // Play done sound when recording stops
+      playEarcon('done');
       const audioData = await stopRecording();
       console.log(`[HomeScreen] Recording stopped: ${Date.now() - startTime}ms`);
 
@@ -165,6 +162,10 @@ export default function HomeScreen() {
       if (!photoBase64) {
         throw new Error('Missing base64 image data');
       }
+
+      // Start PROCESSING animation
+      console.log('[HomeScreen] Starting PROCESSING animation');
+      processingCircleRef.current?.triggerProcessing();
 
       // Start playing processing sound after 2 seconds and repeat every 2 seconds
       setTimeout(() => {
@@ -212,6 +213,11 @@ export default function HomeScreen() {
             clearInterval(processingIntervalRef.current);
             processingIntervalRef.current = null;
           }
+          
+          // Start COMPLETE animation
+          console.log('[HomeScreen] Starting COMPLETE animation');
+          processingCircleRef.current?.triggerComplete();
+          
           playEarcon('result');
           // Add 200ms delay before playing the actual audio
           await new Promise(resolve => setTimeout(resolve, 200));
@@ -219,13 +225,10 @@ export default function HomeScreen() {
           await playAudioFile(audioFileUri);
           setIsPlayingResult(false);
           
-          // After audio is done playing, hide the circle
-          circleRef.current?.triggerAnimation(); // Correct method call
           console.log(`[HomeScreen] Audio playback complete: ${Date.now() - playStart}ms`);
         } catch (speechError) {
           console.error('[HomeScreen] ElevenLabs error:', speechError);
           Alert.alert('Speech Error', 'Failed to convert text to speech');
-          circleRef.current?.triggerAnimation(); // Correct method call
         }
       }
 
@@ -235,7 +238,6 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('[HomeScreen] Error in handlePressOut:', error);
       Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
-      circleRef.current?.triggerAnimation(); // Correct method call
     } finally {
       // After either success or failure, reverse dim overlay
       overlayOpacity.value = withTiming(0, { duration: 300 });
@@ -244,6 +246,11 @@ export default function HomeScreen() {
         processingIntervalRef.current = null;
       }
     }
+  };
+
+  const handleProcessingCircleComplete = () => {
+    console.log('[HomeScreen] Processing circle animation complete');
+    processingCircleRef.current?.triggerReset();
   };
 
   // Status text for UI
@@ -264,9 +271,6 @@ export default function HomeScreen() {
         ref={cameraRef}
       />
 
-      {/* Blur overlay */}
-      {/* optional: <BlurView ... intensity={5} />  // barely visible */}
-
       {/* Dim overlay (animated) */}
       <Animated.View pointerEvents="none" style={[styles.dimOverlay, dimStyle]} />
 
@@ -284,18 +288,11 @@ export default function HomeScreen() {
         disabled={isPlayingResult}
       />
 
-      {/* Radial pulse */}
-      <BigCircleAnimated ref={circleRef} color={ACCENT_COLOR} duration={800} fadeDelay={600} />
-
-      {/* UI Elements */}
-      {photoUri && (
-        <BlurView style={[styles.previewContainer, { zIndex: 2 }]} intensity={40} tint="default">
-          <Image 
-            source={{ uri: photoUri }}
-            style={styles.preview}
-          />
-        </BlurView>
-      )}
+      {/* Processing Circle */}
+      <ProcessingCircle
+        ref={processingCircleRef}
+        onAnimationComplete={handleProcessingCircleComplete}
+      />
     </View>
   );
 }
@@ -303,53 +300,18 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   main: {
     flex: 1,
-    backgroundColor: '#000', // Dark background for camera view
+    position: 'relative',
   },
   camera: {
+    flex: 1,
+  },
+  dimOverlay: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 0,
-  },
-  previewContainer: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    backgroundColor: 'rgba(255,255,255,0.05)', // Frosted glass look
-    zIndex: 2,
-  },
-  preview: {
-    width: 120,
-    height: 160,
+    backgroundColor: 'black',
+    zIndex: 1,
   },
   pressableArea: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 1, // Above camera, below UI
-  },
-  // Add any other styles used in your component
-  recordButton: {
-    position: 'absolute',
-    bottom: 20,
-    alignSelf: 'center',
-    padding: 20,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    zIndex: 2,
-  },
-  recordingButton: {
-    backgroundColor: 'rgba(0,198,255,0.4)',
-  },
-  recordText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  dimOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#000',
   },
 });
