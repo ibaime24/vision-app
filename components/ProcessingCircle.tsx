@@ -128,9 +128,9 @@ const ProcessingCircle = forwardRef<ProcessingCircleRef, ProcessingCircleProps>(
 // Animation and style constants
 const COLORS = {
   circle: {
-    fill: 'rgba(255, 255, 255)',
-    glow: 'rgba(100, 200, 255, 0.2)',
-    border: 'rgb(255, 255, 255)',
+    fill: '#FFFFFF',  // Pure white using hex
+    glow: 'rgba(255, 255, 255, 0.2)',  // White glow with transparency
+    border: '#FFFFFF',  // Pure white border
   },
 } as const;
 
@@ -142,7 +142,7 @@ const BORDERS = {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 40,
+    top: 60,
     right: 20,
     bottom: 0,
     justifyContent: 'center',

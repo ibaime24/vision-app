@@ -53,20 +53,6 @@ async function playEarcon(type: keyof typeof earcons) {
   }
 }
 
-export async function playSystemClick() {
-  if (Platform.OS === 'ios') {
-    // iOS: 1104 is "Tock", 1156 is "Peek"
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: 'system://com.apple.UIKit:1104' }    // needs RN 0.79 / iOS 17+
-    );
-    await sound.playAsync();
-  } else {
-    // Android: just use Haptic feedback (there's no public audio API)
-    Haptics.selectionAsync();
-  }
-}
-
-
 // First, define the type for the ref 
 export default function HomeScreen() {
   const [inputText, setInputText] = useState('');
@@ -230,6 +216,10 @@ export default function HomeScreen() {
           console.error('[HomeScreen] ElevenLabs error:', speechError);
           Alert.alert('Speech Error', 'Failed to convert text to speech');
         }
+        const handleProcessingCircleComplete = () => {
+          console.log('[HomeScreen] Processing circle animation complete');
+          processingCircleRef.current?.triggerReset();
+        };
       }
 
       const totalTime = Date.now() - startTime;
