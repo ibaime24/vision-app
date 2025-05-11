@@ -158,7 +158,7 @@ export default function HomeScreen() {
         playEarcon('processing');
         processingIntervalRef.current = setInterval(() => {
           playEarcon('processing');
-        }, 2000);
+        }, 3000);
       }, 2000);
 
       // Transcribe the audio

@@ -36,14 +36,15 @@ const ProcessingCircle = forwardRef<ProcessingCircleRef, ProcessingCircleProps>(
     const config = {
       appear: {
         scale: { to: 1, duration: 300, easing: Easing.out(Easing.cubic) },
-        opacity: { to: 1, duration: 200 }
+        opacity: { to: .85, duration: 200 }
       },
       processing: {
-        pulse: { min: 0.9, max: 1.1, duration: 800 }
+        pulse: { min: 0.8, max: 1.3, duration: 2000 },
+        opacity: { to: 1, duration: 150 }
       },
       complete: {
-        scale: { to: 1.5, duration: 400 },
-        opacity: { to: 0, duration: 400 }
+        scale: { to: 1.4, duration: 400 },
+        opacity: { to: 0, duration: 400 },
       },
       reset: {
         scale: { to: 0, duration: 300 },
@@ -74,6 +75,9 @@ const ProcessingCircle = forwardRef<ProcessingCircleRef, ProcessingCircleProps>(
             -1,
             true
           );
+          opacity.value = withTiming(config.processing.opacity.to, {
+            duration: config.processing.opacity.duration
+          });
           break;
 
         case 'complete':
@@ -150,7 +154,7 @@ const styles = StyleSheet.create({
     zIndex: 9999,
     pointerEvents: 'none',
   },
-  innerCircle: { //the outside rintg
+  innerCircle: { //the circle
     position: 'absolute',
     top: 0,
     left: 0,
