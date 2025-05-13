@@ -1,10 +1,10 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Audio } from 'expo-av';
-import { CameraView } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
-import { Alert, Image, Pressable, StyleSheet, View, Platform } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { Alert, Image, Pressable, StyleSheet, View, Platform, Text } from 'react-native';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import { useCamera } from '../../hooks/useCamera';
 import { useElevenLabs } from '../../hooks/useElevenLabs';
@@ -55,6 +55,7 @@ async function playEarcon(type: keyof typeof earcons) {
 
 // First, define the type for the ref 
 export default function HomeScreen() {
+  const [permission, requestPermission] = useCameraPermissions();
   const [inputText, setInputText] = useState('');
   const [isPlayingResult, setIsPlayingResult] = useState(false);
   const { cameraRef, photoUri, photoBase64, takePicture } = useCamera();
@@ -68,6 +69,25 @@ export default function HomeScreen() {
   const overlayOpacity = useSharedValue(0);
   const processingIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const processingCircleRef = useRef<ProcessingCircleRef>(null);
+
+  // Request camera permissions if not granted
+  useEffect(() => {
+    if (!permission?.granted) {
+      requestPermission();
+    }
+  }, [permission]);
+
+  // Show error if permissions are denied
+  if (permission?.status === 'denied') {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>
+          Camera permission is required to use this app.
+          Please enable it in your device settings.
+        </Text>
+      </View>
+    );
+  }
 
   // Animated style for background dim
   const dimStyle = useAnimatedStyle(() => ({
@@ -257,8 +277,9 @@ export default function HomeScreen() {
     <View style={styles.main}>
       {/* Camera layer */}
       <CameraView
-        style={styles.camera}
         ref={cameraRef}
+        style={styles.camera}
+        active={true}
       />
 
       {/* Dim overlay (animated) */}
@@ -303,5 +324,15 @@ const styles = StyleSheet.create({
   pressableArea: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 1, // Above camera, below UI
+  },
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
