@@ -248,6 +248,12 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('[HomeScreen] Error in handlePressOut:', error);
       Alert.alert('Error', error instanceof Error ? error.message : 'Unknown error');
+      // Reset the animation on error
+      processingCircleRef.current?.triggerReset();
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
+        processingIntervalRef.current = null;
+      }
     } finally {
       // After either success or failure, reverse dim overlay
       overlayOpacity.value = withTiming(0, { duration: 300 });
