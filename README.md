@@ -1,4 +1,4 @@
-# Vision Assistant - AI-Powered Vision Assistance
+# Son - AI-Powered Vision Assistance
 
 I originally made this as a post grad project designed to help my visually impaired dad (also why I call it "Son"). However, seeing that functionally adjacent products are either being teased and never released or several hundred dollars, I decided to open source this. This product is designed to feel as if you have a real vision assistant with you at all times. For people who are visually competent, it's also a pretty easy and fun way to interface with AI tools. Meta's AI-powered glasses are currently going for upwards of nearly $400. If you use Son full-time (100 uses per week), this product will cost about $3 dollars per month. With Project Astra nowhere on the horizon, this tool can serve as a cheap and easy way to let visually impaired people interact with the world.
 
