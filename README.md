@@ -18,7 +18,6 @@ This product uses AI tools as the core driver of its intelligence. AI tools make
 - API keys for:
   - OpenAI
   - ElevenLabs
-  - Whisper
 
 ### Installation
 
@@ -69,7 +68,7 @@ Example questions:
 
 ## Technical Details
 
-This project uses Typescript, React Native, Expo, along with OpenAI and Elevenlabs APIs (Whisper and 4o-mini). This project is currently up to date with Expo 53, which released in early May 2025. This will continue to be updated, but issues may arise with newer releases. 
+This project uses Typescript, React Native, Expo, along with OpenAI and Elevenlabs APIs (Whisper and 4o-mini). This project is currently up to date with Expo 53, which released in early May 2025. This will continue to be updated, but issues may arise with newer releases. This project has only been physically tested on iPhones, so be cautious when using on Android devices.
 
 
 ## License
