@@ -56,7 +56,6 @@ async function playEarcon(type: keyof typeof earcons) {
 // First, define the type for the ref 
 export default function HomeScreen() {
   const [permission, requestPermission] = useCameraPermissions();
-  const [inputText, setInputText] = useState('');
   const [isPlayingResult, setIsPlayingResult] = useState(false);
   const { cameraRef, photoUri, photoBase64, takePicture } = useCamera();
   const { isRecording, hasPermission, startRecording, stopRecording } = useAudioRecorder();
@@ -293,13 +292,7 @@ export default function HomeScreen() {
 
       {/* Full screen pressable area - above camera, below UI */}
       <Pressable
-        style={[
-          StyleSheet.absoluteFill,
-          { 
-            zIndex: 1,  // Above camera, below UI
-            marginBottom: tabBarHeight, // Add space for tab bar
-          }
-        ]}
+        style={styles.pressableArea}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         disabled={isPlayingResult}
@@ -319,9 +312,11 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
   },
+  
   camera: {
     flex: 1,
   },
+  
   dimOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'black',
@@ -330,12 +325,15 @@ const styles = StyleSheet.create({
   pressableArea: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 1, // Above camera, below UI
+    margin: 25, // Creates a 25px border around the edges so users don't accidentally trigger process by holding phone
   },
+  
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   errorText: {
     color: 'red',
     fontSize: 16,

@@ -1,6 +1,6 @@
 # Son - AI-Powered Vision Assistance
 
-I originally made this as a post grad project designed to help my visually impaired dad (also why I call it "Son"). However, seeing that functionally adjacent products are either being teased and never released or several hundred dollars, I decided to open source this. This product is designed to feel as if you have a real vision assistant with you at all times. For people who are visually competent, it's also a pretty easy and fun way to interface with AI tools. Meta's AI-powered glasses are currently going for upwards of nearly $400. If you use Son full-time (100 uses per week), this product will cost about $3 dollars per month. With Project Astra nowhere on the horizon, this tool can serve as a cheap and easy way to let visually impaired people interact with the world.
+I originally made this as a post grad project designed to help my visually impaired dad (also why I call it "Son"). However, seeing that functionally adjacent products are either being teased and never released or several hundred dollars, I decided to open source this. This product is designed to feel as if you have a real vision assistant with you at all times. For people who are visually impaired, it's also a pretty easy and fun way to interface with AI tools. Meta's AI-powered glasses are currently going for upwards of $400. If you use Son full-time (100 uses per week), this product will cost about $3 dollars per month. With Project Aria nowhere on the horizon, this tool can serve as a cheap and easy way to let visually impaired people interact with the world.
 
 Please feel free to plug in your API keys and set this up on a friend or family member's phone! 
 
@@ -16,8 +16,8 @@ This product uses AI tools as the core driver of its intelligence. AI tools make
 - npm or pnpm
 - Expo Go app on your mobile device
 - API keys for:
-  - OpenAI
-  - ElevenLabs
+  - OpenAI (4o-mini + Whisper)
+  - ElevenLabs (TTS)
 
 ### Installation
 
@@ -68,11 +68,17 @@ Example questions:
 
 ## Technical Details
 
-This project uses Typescript, React Native, Expo, along with OpenAI and Elevenlabs APIs (Whisper and 4o-mini). This project is currently up to date with Expo 53, which released in early May 2025. This will continue to be updated, but issues may arise with newer releases. This project has only been physically tested on iPhones, so be cautious when using on Android devices.
-
+This project uses Typescript, React Native, Expo, along with OpenAI and ElevenLabs APIs (Whisper and 4o-mini). This project is currently up to date with Expo 53, which released in early May 2025. This will continue to be updated, but issues may arise with newer releases. This project has only been physically tested on iPhones, so be cautious when using on Android devices.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. This means you can:
+- Use it for free
+- Modify it
+- Distribute it
+- Use it commercially
+- Use it privately
+
+The only requirement is that you include the original license and copyright notice.
 
 
