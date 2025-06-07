@@ -70,6 +70,15 @@ Example questions:
 
 This project uses Typescript, React Native, Expo, along with OpenAI and ElevenLabs APIs (Whisper and 4o-mini). This project is currently up to date with Expo 53, which released in early May 2025. This will continue to be updated, but issues may arise with newer releases. This project has only been physically tested on iPhones, so be cautious when using on Android devices.
 
+
+## Known Issues and Up Next
+
+Fixes that will release soon:
+- Increased audio-based error handling so users know when a request doesn't go through
+- Fix issue where processing audio won't stop playing if secondary request is made during processing
+- Add longer delay between touch and start of audio processing
+- Add fully hands-free mode for shirt-pocket usage
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. This means you can:
