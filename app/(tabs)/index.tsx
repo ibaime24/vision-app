@@ -209,7 +209,7 @@ export default function HomeScreen() {
             clearInterval(processingIntervalRef.current);
             processingIntervalRef.current = null;
           }
-          
+           
           // Start COMPLETE animation
           console.log('[HomeScreen] Starting COMPLETE animation');
           processingCircleRef.current?.triggerComplete();
