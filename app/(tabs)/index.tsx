@@ -64,7 +64,7 @@ export default function HomeScreen() {
   const { sendToOpenAI, aiResponse, status: openAIStatus } = useOpenAI();
   const { speakText, status: elevenLabsStatus, getAudioFromElevenLabs, playAudioFile } = useElevenLabs();
   const router = useRouter();
-  const tabBarHeight = useBottomTabBarHeight();
+  // = useBottomTabBarHeight(); not needed for now
   const captureTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const overlayOpacity = useSharedValue(0);
   const processingIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
