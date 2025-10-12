@@ -19,7 +19,11 @@ export default {
     plugins: [
       "expo-font",
       "expo-router",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-audio",
+        { "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone." }
+      ]
     ],
     extra: {
       EXPO_PUBLIC_OPENAI_API_KEY: process.env.EXPO_PUBLIC_OPENAI_API_KEY || null,

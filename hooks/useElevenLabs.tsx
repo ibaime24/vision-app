@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Audio } from 'expo-av';
+import { createAudioPlayer } from 'expo-audio';
 import Constants from 'expo-constants';
 
 interface UseElevenLabsReturn {
@@ -60,19 +60,9 @@ export function useElevenLabs(): UseElevenLabsReturn {
 
   // Modified to use data URL directly
   const playAudioFile = async (dataUrl: string): Promise<void> => {
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: dataUrl },
-      { shouldPlay: true }
-    );
-
-    return new Promise((resolve) => {
-      sound.setOnPlaybackStatusUpdate(async (status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          await sound.unloadAsync();
-          resolve();
-        }
-      });
-    });
+    const player = createAudioPlayer({ uri: dataUrl });
+    await player.play();
+    player.release();
   };
 
   const speakText = async (text: string): Promise<void> => {

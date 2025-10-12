@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Audio } from 'expo-av';
+import { useAudioRecorder as useExpoAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio';
 import * as FileSystem from 'expo-file-system';
 import { Platform, Alert } from 'react-native';
 
@@ -9,7 +9,7 @@ interface AudioRecorderOptions {
 }
 
 export function useAudioRecorder(options?: AudioRecorderOptions) {
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const recorder = useExpoAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [hasPermission, setHasPermission] = useState<boolean>(false);
   const [isRecording, setIsRecording] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -18,16 +18,8 @@ export function useAudioRecorder(options?: AudioRecorderOptions) {
   useEffect(() => {
     (async () => {
       try {
-        const permission = await Audio.requestPermissionsAsync();
+        const permission = await AudioModule.requestRecordingPermissionsAsync();
         setHasPermission(permission.status === 'granted');
-        
-        // Pre-configure audio mode when component mounts
-        if (permission.status === 'granted') {
-          await Audio.setAudioModeAsync({
-            allowsRecordingIOS: true,
-            playsInSilentModeIOS: true,
-          });
-        }
       } catch (error) {
         console.error('Permission error:', error);
         setHasPermission(false);
@@ -36,10 +28,7 @@ export function useAudioRecorder(options?: AudioRecorderOptions) {
 
     // Cleanup when component unmounts
     return () => {
-      Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: false,
-      });
+      // recorder is auto-released by hook on unmount
     };
   }, []);
 
@@ -50,51 +39,30 @@ export function useAudioRecorder(options?: AudioRecorderOptions) {
         throw new Error('Microphone permission not granted');
       }
 
-      // Explicitly set audio mode before each recording
-      // This ensures iOS will allow recording
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        staysActiveInBackground: true,
-      });
-
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-
-      setRecording(newRecording);
+      await recorder.prepareToRecordAsync();
+      recorder.record();
       setIsRecording(true);
     } catch (error) {
       console.error('Error starting recording:', error);
       options?.onError?.(error instanceof Error ? error : new Error(String(error)));
     }
-  }, [hasPermission]);
+  }, [hasPermission, recorder]);
 
   const stopRecording = useCallback(async () => {
     try {
-      if (!recording) {
-        throw new Error('No active recording');
-      }
-
       setIsRecording(false);
-      await recording.stopAndUnloadAsync();
-      
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-      });
-
-      const uri = recording.getURI();
+      await recorder.stop();
+      const uri = recorder.uri;
       if (!uri) {
         throw new Error('Recording URI is null');
       }
-
-      setRecording(null);
       return { uri };
     } catch (error) {
       console.error('Error stopping recording:', error);
       options?.onError?.(error instanceof Error ? error : new Error(String(error)));
       return null;
     }
-  }, [recording]);
+  }, [recorder]);
 
   const handleError = useCallback((error: Error) => {
     const errorMessage = error.message || 'An error occurred';

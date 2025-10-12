@@ -1,5 +1,5 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { Audio } from 'expo-av';
+import { createAudioPlayer } from 'expo-audio';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -40,14 +40,9 @@ const earcons = {
 
 async function playEarcon(type: keyof typeof earcons) {
   try {
-    const { sound } = await Audio.Sound.createAsync(earcons[type]);
-    await sound.playAsync();
-    // Unload after playback to free resources
-    sound.setOnPlaybackStatusUpdate(async (status) => {
-      if (status.isLoaded && status.didJustFinish) {
-        await sound.unloadAsync();
-      }
-    });
+    const player = createAudioPlayer(earcons[type]);
+    await player.play();
+    player.release();
   } catch (e) {
     console.warn('Earcon error', e);
   }
@@ -96,13 +91,9 @@ export default function HomeScreen() {
 
   const playRecordedAudio = async (uri: string) => {
     try {
-      const { sound } = await Audio.Sound.createAsync({ uri });
-      await sound.playAsync();
-      sound.setOnPlaybackStatusUpdate(async (status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          await sound.unloadAsync();
-        }
-      });
+      const player = createAudioPlayer({ uri });
+      await player.play();
+      player.release();
     } catch (error) {
       Alert.alert('Playback Error', 'Could not play the recorded audio.');
     }
