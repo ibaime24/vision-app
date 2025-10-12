@@ -42,3 +42,7 @@ yarn-error.*
 
 # misc
 app-example
+.cursor-commands/
+
+
+

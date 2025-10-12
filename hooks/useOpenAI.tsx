@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import OpenAI from "openai";
 import Constants from 'expo-constants';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // Get the OpenAI API key from Constants
 const OPENAI_API_KEY = Constants.expoConfig?.extra?.EXPO_PUBLIC_OPENAI_API_KEY;
