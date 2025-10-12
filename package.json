@@ -21,7 +21,7 @@
     "@wdragon/react-native-voice": "^3.3.11",
     "axios": "^1.7.9",
     "dotenv": "^16.4.7",
-    "expo": "^53.0.0",
+    "expo": "^54.0.13",
     "expo-av": "~15.1.4",
     "expo-blur": "~14.1.4",
     "expo-camera": "~16.1.6",
