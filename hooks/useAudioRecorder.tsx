@@ -39,6 +39,14 @@ export function useAudioRecorder(options?: AudioRecorderOptions) {
         throw new Error('Microphone permission not granted');
       }
 
+      // iOS requires explicitly enabling recording mode before starting
+      if (Platform.OS === 'ios') {
+        await AudioModule.setAudioModeAsync({
+          allowsRecording: true,
+          playsInSilentMode: true,
+        }); 
+      }
+
       await recorder.prepareToRecordAsync();
       recorder.record();
       setIsRecording(true);

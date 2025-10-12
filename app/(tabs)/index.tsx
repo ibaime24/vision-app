@@ -52,7 +52,7 @@ async function playEarcon(type: keyof typeof earcons) {
 export default function HomeScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [isPlayingResult, setIsPlayingResult] = useState(false);
-  const pressStartTimeRef = useRef<number | null>(null);
+  // Tracks whether the capture flow actually started (after the 250ms delay)
   const { cameraRef, photoUri, photoBase64, takePicture } = useCamera();
   const { isRecording, hasPermission, startRecording, stopRecording } = useAudioRecorder();
   const { transcribeAudio, status: whisperStatus } = useWhispersAPI();
@@ -64,6 +64,7 @@ export default function HomeScreen() {
   const overlayOpacity = useSharedValue(0);
   const processingIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const processingCircleRef = useRef<ProcessingCircleRef>(null);
+  const hasTriggeredRef = useRef(false);
 
   // Request camera permissions if not granted
   useEffect(() => {
@@ -101,26 +102,52 @@ export default function HomeScreen() {
 
   const handlePressIn = async () => {
     try {
-      // Record the start time
-      pressStartTimeRef.current = Date.now(); // starts the process for making sure program doesn't go early
+      // Reset animation states and wait for completion before starting APPEAR
+      processingCircleRef.current?.triggerReset(() => {
+        console.log('[HomeScreen] RESET complete, starting APPEAR');
+        processingCircleRef.current?.triggerAppear();
+      });
+      
+      // Strong haptic on initial press
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      playEarcon('press');
+      
+      // Animate dimming overlay in
+      overlayOpacity.value = withTiming(0.1, { duration: 300 });
+
+      // Clear any existing pending timer and reset trigger state
+      if (captureTimeoutRef.current) {
+        clearTimeout(captureTimeoutRef.current);
+        captureTimeoutRef.current = null;
+      }
+      hasTriggeredRef.current = false;
+
+      // Start photo and recording processes after 250ms
+      captureTimeoutRef.current = setTimeout(async () => {
+        try {
+          const photo = await takePicture();
+          if (!photo) {
+            throw new Error('Failed to capture photo');
+          }
+          await startRecording();
+          hasTriggeredRef.current = true;
+        } catch (err) {
+          Alert.alert('Error', 'Failed to start capture process');
+        }
+      }, 250);
     } catch (error) {
       Alert.alert('Error', 'Failed to start capture process');
     }
   };
 
+// Press out is the end of the press
   const handlePressOut = async () => {
     try {
-      // If no start time was recorded, do nothing
-      if (!pressStartTimeRef.current) {
-        return;
-      }
-
-      // Calculate how long the press was held
-      const pressDuration = Date.now() - pressStartTimeRef.current;
-      pressStartTimeRef.current = null;
-
-      // If press wasn't held long enough, do nothing
-      if (pressDuration < 250) {
+      // If the delayed start hasn't fired yet, cancel and reset UI
+      if (captureTimeoutRef.current && !hasTriggeredRef.current) {
+        clearTimeout(captureTimeoutRef.current);
+        captureTimeoutRef.current = null;
+        overlayOpacity.value = withTiming(0, { duration: 300 });
         return;
       }
 
@@ -260,46 +287,7 @@ export default function HomeScreen() {
     return 'Hold to Record';
   };
 
-  // Add effect to start process when press duration is valid
-  useEffect(() => {
-    if (pressStartTimeRef.current) {
-      const checkPressDuration = () => {
-        if (!pressStartTimeRef.current) return;
-        
-        const pressDuration = Date.now() - pressStartTimeRef.current;
-        if (pressDuration >= 250) {
-          // Reset animation states and wait for completion before starting APPEAR
-          processingCircleRef.current?.triggerReset(() => {
-            console.log('[HomeScreen] RESET complete, starting APPEAR');
-            processingCircleRef.current?.triggerAppear();
-          });
-          
-          // Strong haptic on initial press
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-          playEarcon('press');
-          
-          // Animate dimming overlay in
-          overlayOpacity.value = withTiming(0.1, { duration: 300 });
-
-          // Take photo and start recording
-          takePicture().then(photo => {
-            if (!photo) {
-              throw new Error('Failed to capture photo');
-            }
-            return startRecording();
-          }).catch(error => {
-            Alert.alert('Error', 'Failed to start capture process');
-          });
-        } else {
-          // Check again in a short while
-          setTimeout(checkPressDuration, 50);
-        }
-      };
-
-      // Start checking press duration
-      checkPressDuration();
-    }
-  }, [pressStartTimeRef.current]);
+  // Note: long-press detection is handled directly in the press handlers above
 
   return (
     <View style={styles.main}>

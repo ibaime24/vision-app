@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { CameraView, CameraCapturedPicture } from 'expo-camera';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 interface CameraResult {
   uri: string;
