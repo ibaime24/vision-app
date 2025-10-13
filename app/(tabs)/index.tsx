@@ -15,8 +15,7 @@ import { BlurView } from 'expo-blur';
 import Animated, { 
   useSharedValue, 
   withTiming, 
-  useAnimatedStyle,
-  runOnJS 
+  useAnimatedStyle
 } from 'react-native-reanimated';
 
 /**
@@ -99,6 +98,8 @@ export default function HomeScreen() {
       Alert.alert('Playback Error', 'Could not play the recorded audio.');
     }
   };
+  // use the fire-and-forget earcon helper defined above
+  const playEarconLocal = (type: keyof typeof earcons) => playEarcon(type);
 
   const handlePressIn = async () => {
     try {
@@ -111,6 +112,7 @@ export default function HomeScreen() {
       // Strong haptic on initial press
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       playEarcon('press');
+      
       
       // Animate dimming overlay in
       overlayOpacity.value = withTiming(0.1, { duration: 300 });
