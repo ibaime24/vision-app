@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
-import { createAudioPlayer } from 'expo-audio';
+import { createAudioPlayer, AudioModule } from 'expo-audio';
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 interface UseElevenLabsReturn {
@@ -60,6 +61,13 @@ export function useElevenLabs(): UseElevenLabsReturn {
 
   // Modified to use data URL directly
   const playAudioFile = async (dataUrl: string): Promise<void> => {
+    // Ensure playback routes to loud speaker and works in silent mode on iOS
+    if (Platform.OS === 'ios') {
+      await AudioModule.setAudioModeAsync({
+        allowsRecording: false,
+        playsInSilentMode: true,
+      });
+    }
     const player = createAudioPlayer({ uri: dataUrl });
     await player.play();
     player.release();

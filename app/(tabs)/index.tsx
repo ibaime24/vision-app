@@ -1,5 +1,5 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { createAudioPlayer } from 'expo-audio';
+import { createAudioPlayer, AudioModule } from 'expo-audio';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -37,8 +37,18 @@ const earcons = {
   result: require('../../assets/sounds/result.wav'),     // just before speech plays
 };
 
+
+
 async function playEarcon(type: keyof typeof earcons) {
   try {
+    // Ensure audio plays through speaker on iOS
+    if (Platform.OS === 'ios') {
+      await AudioModule.setAudioModeAsync({
+        allowsRecording: false,
+        playsInSilentMode: true,
+      });
+    }
+    
     const player = createAudioPlayer(earcons[type]);
     await player.play();
     player.release();
@@ -91,6 +101,14 @@ export default function HomeScreen() {
 
   const playRecordedAudio = async (uri: string) => {
     try {
+      // Reset audio mode for playback on iOS
+      if (Platform.OS === 'ios') {
+        await AudioModule.setAudioModeAsync({
+          allowsRecording: false,
+          playsInSilentMode: true,
+        });
+      }
+      
       const player = createAudioPlayer({ uri });
       await player.play();
       player.release();
