@@ -45,13 +45,29 @@ async function playEarcon(type: keyof typeof earcons) {
     if (Platform.OS === 'ios') {
       await AudioModule.setAudioModeAsync({
         allowsRecording: false,
-        playsInSilentMode: true,
+        playsInSilentMode: true
       });
     }
     
     const player = createAudioPlayer(earcons[type]);
-    await player.play();
-    player.release();
+    
+    // Wait for playback to complete before releasing
+    return new Promise<void>((resolve) => {
+      player.addListener('playbackStatusUpdate', (status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          player.release();
+          resolve();
+        }
+      });
+      
+      try {
+        player.play();
+      } catch (e) {
+        console.warn('Earcon play error', e);
+        player.release();
+        resolve();
+      }
+    });
   } catch (e) {
     console.warn('Earcon error', e);
   }
@@ -74,6 +90,22 @@ export default function HomeScreen() {
   const processingIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const processingCircleRef = useRef<ProcessingCircleRef>(null);
   const hasTriggeredRef = useRef(false);
+
+  // Configure playback-friendly audio mode on mount (iOS)
+  useEffect(() => {
+    (async () => {
+      if (Platform.OS === 'ios') {
+        try {
+          await AudioModule.setAudioModeAsync({
+            allowsRecording: false,
+            playsInSilentMode: true
+          });
+        } catch (e) {
+          console.warn('Audio session init error', e);
+        }
+      }
+    })();
+  }, []);
 
   // Request camera permissions if not granted
   useEffect(() => {
@@ -105,13 +137,28 @@ export default function HomeScreen() {
       if (Platform.OS === 'ios') {
         await AudioModule.setAudioModeAsync({
           allowsRecording: false,
-          playsInSilentMode: true,
+          playsInSilentMode: true
         });
       }
       
       const player = createAudioPlayer({ uri });
-      await player.play();
-      player.release();
+      
+      // Wait for playback to complete before releasing
+      return new Promise<void>((resolve, reject) => {
+        player.addListener('playbackStatusUpdate', (status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            player.release();
+            resolve();
+          }
+        });
+        
+        try {
+          player.play();
+        } catch (error) {
+          player.release();
+          reject(error);
+        }
+      });
     } catch (error) {
       Alert.alert('Playback Error', 'Could not play the recorded audio.');
     }
@@ -129,7 +176,7 @@ export default function HomeScreen() {
       
       // Strong haptic on initial press
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      playEarcon('press');
+      await playEarcon('press');
       
       
       // Animate dimming overlay in
@@ -164,12 +211,12 @@ export default function HomeScreen() {
   const handlePressOut = async () => {
     try {
       // If the delayed start hasn't fired yet, cancel and reset UI
-      if (captureTimeoutRef.current && !hasTriggeredRef.current) {
-        clearTimeout(captureTimeoutRef.current);
-        captureTimeoutRef.current = null;
-        overlayOpacity.value = withTiming(0, { duration: 300 });
-        return;
-      }
+      // if (captureTimeoutRef.current && !hasTriggeredRef.current) {
+      //   clearTimeout(captureTimeoutRef.current);
+      //   captureTimeoutRef.current = null;
+      //   overlayOpacity.value = withTiming(0, { duration: 300 });
+      //   return;
+      // }
 
       // If user released before capture started, cancel and reset UI
       if (!isRecording) {
@@ -203,9 +250,9 @@ export default function HomeScreen() {
 
       // Start playing processing sound after 3 seconds and repeat every 2 seconds
       setTimeout(() => {
-        playEarcon('processing');
+        void playEarcon('processing');
         processingIntervalRef.current = setInterval(() => {
-          playEarcon('processing');
+          void playEarcon('processing');
         }, 2000);
       }, 3000);
 
@@ -252,7 +299,7 @@ export default function HomeScreen() {
           console.log('[HomeScreen] Starting COMPLETE animation');
           processingCircleRef.current?.triggerComplete();
           
-          playEarcon('result');
+          await playEarcon('result');
           // Add 200ms delay before playing the actual audio
           await new Promise(resolve => setTimeout(resolve, 200));
           setIsPlayingResult(true);

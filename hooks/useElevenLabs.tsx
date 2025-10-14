@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { createAudioPlayer, AudioModule } from 'expo-audio';
 import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 import Constants from 'expo-constants';
 
 interface UseElevenLabsReturn {
@@ -23,7 +24,7 @@ export function useElevenLabs(): UseElevenLabsReturn {
     throw new Error('Missing EXPO_PUBLIC_ELEVEN_LABS_API_KEY');
   }
 
-  // Modified to return base64 data URL
+  // Get audio and persist to a file; return file:// URI for native playback reliability
   const getAudioFromElevenLabs = async (text: string): Promise<string> => {
     const url = `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`;
     
@@ -59,18 +60,33 @@ export function useElevenLabs(): UseElevenLabsReturn {
     return dataUrl;
   };
 
-  // Modified to use data URL directly
-  const playAudioFile = async (dataUrl: string): Promise<void> => {
+  // Play from a file:// URI
+  const playAudioFile = async (fileUri: string): Promise<void> => {
     // Ensure playback routes to loud speaker and works in silent mode on iOS
     if (Platform.OS === 'ios') {
       await AudioModule.setAudioModeAsync({
         allowsRecording: false,
-        playsInSilentMode: true,
+        playsInSilentMode: true
       });
     }
-    const player = createAudioPlayer({ uri: dataUrl });
-    await player.play();
-    player.release();
+    const player = createAudioPlayer({ uri: fileUri });
+    
+    // Wait for playback to complete before releasing
+    return new Promise<void>((resolve, reject) => {
+      player.addListener('playbackStatusUpdate', (status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          player.release();
+          resolve();
+        }
+      });
+      
+      try {
+        player.play();
+      } catch (error) {
+        player.release();
+        reject(error);
+      }
+    });
   };
 
   const speakText = async (text: string): Promise<void> => {
