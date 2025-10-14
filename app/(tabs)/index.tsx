@@ -210,21 +210,23 @@ export default function HomeScreen() {
 // Press out is the end of the press
   const handlePressOut = async () => {
     try {
-      // If the delayed start hasn't fired yet, cancel and reset UI
-      if (captureTimeoutRef.current && !hasTriggeredRef.current) {
-        clearTimeout(captureTimeoutRef.current);
-        captureTimeoutRef.current = null;
-        overlayOpacity.value = withTiming(0, { duration: 300 });
-        return;
-      }
+//these may be helpful but we are removing them for now as it's doing more harm than good and messing with press out logic
 
-      // If user released before capture started, cancel and reset UI
-      if (!isRecording) {
-        // Reverse dim overlay
-        overlayOpacity.value = withTiming(0, { duration: 300 });
-        processingCircleRef.current?.triggerReset();
-        return;
-      }
+      // // If the delayed start hasn't fired yet, cancel and reset UI
+      // if (captureTimeoutRef.current && !hasTriggeredRef.current) {
+      //   clearTimeout(captureTimeoutRef.current);
+      //   captureTimeoutRef.current = null;
+      //   overlayOpacity.value = withTiming(0, { duration: 300 });
+      //   return;
+      // }
+
+      // // If user released before capture started, cancel and reset UI
+      // if (!isRecording) {
+      //   // Reverse dim overlay
+      //   overlayOpacity.value = withTiming(0, { duration: 300 });
+      //   processingCircleRef.current?.triggerReset();
+      //   return;
+      // }
 
       // Medium haptic on release
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
