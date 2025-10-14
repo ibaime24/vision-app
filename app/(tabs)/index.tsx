@@ -211,17 +211,18 @@ export default function HomeScreen() {
   const handlePressOut = async () => {
     try {
       // If the delayed start hasn't fired yet, cancel and reset UI
-      // if (captureTimeoutRef.current && !hasTriggeredRef.current) {
-      //   clearTimeout(captureTimeoutRef.current);
-      //   captureTimeoutRef.current = null;
-      //   overlayOpacity.value = withTiming(0, { duration: 300 });
-      //   return;
-      // }
+      if (captureTimeoutRef.current && !hasTriggeredRef.current) {
+        clearTimeout(captureTimeoutRef.current);
+        captureTimeoutRef.current = null;
+        overlayOpacity.value = withTiming(0, { duration: 300 });
+        return;
+      }
 
       // If user released before capture started, cancel and reset UI
       if (!isRecording) {
         // Reverse dim overlay
         overlayOpacity.value = withTiming(0, { duration: 300 });
+        processingCircleRef.current?.triggerReset();
         return;
       }
 
