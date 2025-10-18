@@ -131,40 +131,6 @@ export default function HomeScreen() {
     opacity: overlayOpacity.value,
   }));
 
-  const playRecordedAudio = async (uri: string) => {
-    try {
-      // Reset audio mode for playback on iOS
-      if (Platform.OS === 'ios') {
-        await AudioModule.setAudioModeAsync({
-          allowsRecording: false,
-          playsInSilentMode: true
-        });
-      }
-      
-      const player = createAudioPlayer({ uri });
-      
-      // Wait for playback to complete before releasing
-      return new Promise<void>((resolve, reject) => {
-        player.addListener('playbackStatusUpdate', (status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            player.release();
-            resolve();
-          }
-        });
-        
-        try {
-          player.play();
-        } catch (error) {
-          player.release();
-          reject(error);
-        }
-      });
-    } catch (error) {
-      Alert.alert('Playback Error', 'Could not play the recorded audio.');
-    }
-  };
-  // use the fire-and-forget earcon helper defined above
-  const playEarconLocal = (type: keyof typeof earcons) => playEarcon(type);
 
   const handlePressIn = async () => {
     try {
@@ -201,7 +167,7 @@ export default function HomeScreen() {
         } catch (err) {
           Alert.alert('Error', 'Failed to start capture process');
         }
-      }, 250);
+      }, 50); //maybe set back to 250
     } catch (error) {
       Alert.alert('Error', 'Failed to start capture process');
     }
@@ -304,7 +270,7 @@ export default function HomeScreen() {
           
           await playEarcon('result');
           // Add 200ms delay before playing the actual audio
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise(resolve => setTimeout(resolve, 100));
           setIsPlayingResult(true);
           await playAudioFile(audioFileUri);
           setIsPlayingResult(false);
