@@ -155,7 +155,7 @@ export default function HomeScreen() {
       }
       hasTriggeredRef.current = false;
 
-      // Start photo and recording processes after 250ms
+      // Start photo and recording processes after 250ms. this needs to be worked on as currently it's not working as expected and is messing with press out logic
       captureTimeoutRef.current = setTimeout(async () => {
         try {
           const photo = await takePicture();
@@ -167,7 +167,7 @@ export default function HomeScreen() {
         } catch (err) {
           Alert.alert('Error', 'Failed to start capture process');
         }
-      }, 50); //maybe set back to 250
+      }, 250); //maybe set back to 250
     } catch (error) {
       Alert.alert('Error', 'Failed to start capture process');
     }
@@ -176,6 +176,7 @@ export default function HomeScreen() {
 // Press out is the end of the press
   const handlePressOut = async () => {
     try {
+
 //these may be helpful but we are removing them for now as it's doing more harm than good and messing with press out logic
 
       // // If the delayed start hasn't fired yet, cancel and reset UI
@@ -195,6 +196,7 @@ export default function HomeScreen() {
       // }
 
       // Medium haptic on release
+
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       
       const startTime = Date.now();
@@ -222,8 +224,8 @@ export default function HomeScreen() {
         void playEarcon('processing');
         processingIntervalRef.current = setInterval(() => {
           void playEarcon('processing');
-        }, 2000);
-      }, 3000);
+        }, 2200); //change back to 2000 if preferred
+      }, 3300); //change back to 3000 if preferred
 
       // Transcribe the audio
       console.log('[HomeScreen] Starting transcription...');
