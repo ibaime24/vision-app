@@ -134,14 +134,12 @@ export default function HomeScreen() {
     try {
       // Reset animation states and wait for completion before starting APPEAR
       processingCircleRef.current?.triggerReset(() => {
-        console.log('[HomeScreen] RESET complete, starting APPEAR');
-        processingCircleRef.current?.triggerAppear();
+      processingCircleRef.current?.triggerAppear();
       });
       
       // Strong haptic on initial press
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       await playEarcon('press');
-      
       
       // Animate dimming overlay in
       overlayOpacity.value = withTiming(0.1, { duration: 300 });
@@ -152,7 +150,7 @@ export default function HomeScreen() {
         captureTimeoutRef.current = null;
       }
       hasTriggeredRef.current = false;
-
+      
       // Start photo and recording processes after 250ms. this needs to be worked on as currently it's not working as expected and is messing with press out logic
       captureTimeoutRef.current = setTimeout(async () => {
         try {
@@ -166,12 +164,12 @@ export default function HomeScreen() {
           Alert.alert('Error', 'Failed to start capture process');
 
 
-          //logic for delay action. later return and check for issues but not required now
-          processingIntervalRef.current = setInterval(() => {
-            processingCircleRef.current?.triggerReset(); // will not trigger due to earlier logic problem 
-            clearInterval(0);
-            processingIntervalRef.current = null;
-          }, 0);
+          // //logic for delay action. later return and check for issues but not required now
+          // processingIntervalRef.current = setInterval(() => {
+          //   processingCircleRef.current?.triggerReset(); // will not trigger due to earlier logic problem 
+          //   clearInterval(0);
+          //   processingIntervalRef.current = null;
+          // }, 0);
 
 
           if (processingIntervalRef.current && processingIntervalRef.current < 250) { // will not function as intended - comparing timestamp to numberic value
