@@ -26,8 +26,6 @@ import Animated, {
  * - Both photo & audio are then sent to the backend.
  */
 
-// Design constants
-const ACCENT_COLOR = '#00C6FF'; // Fresh cyan accent
 
 // Preload earcon modules (place your own wav/mp3 files in assets/sounds)
 const earcons = {
@@ -105,7 +103,7 @@ export default function HomeScreen() {
         }
       }
     })();
-  }, []);
+  },); //line may require change 
 
   // Request camera permissions if not granted
   useEffect(() => {
@@ -166,8 +164,24 @@ export default function HomeScreen() {
           hasTriggeredRef.current = true;
         } catch (err) {
           Alert.alert('Error', 'Failed to start capture process');
+
+
+          //logic for delay action. later return and check for issues but not required now
+          processingIntervalRef.current = setInterval(() => {
+            processingCircleRef.current?.triggerReset(); // will not trigger due to earlier logic problem 
+            clearInterval(0);
+            processingIntervalRef.current = null;
+          }, 0);
+
+
+          if (processingIntervalRef.current && processingIntervalRef.current < 250) { // will not function as intended - comparing timestamp to numberic value
+            processingCircleRef.current?.triggerReset(); // will not trigger due to earlier logic problem 
+            clearInterval(processingIntervalRef.current);
+            processingIntervalRef.current = null;
+            console.log('[HomeScreen] process stopped due to early process');
+          }
         }
-      }, 250); //maybe set back to 250
+      }, 150); //maybe set back to 250
     } catch (error) {
       Alert.alert('Error', 'Failed to start capture process');
     }
@@ -272,10 +286,10 @@ export default function HomeScreen() {
           
           await playEarcon('result');
           // Add 200ms delay before playing the actual audio
-          await new Promise(resolve => setTimeout(resolve, 100));
-          setIsPlayingResult(true);
-          await playAudioFile(audioFileUri);
-          setIsPlayingResult(false);
+          await new Promise(resolve => setTimeout(resolve, 100)); 
+          setIsPlayingResult(true); 
+          await playAudioFile(audioFileUri); 
+          setIsPlayingResult(false); 
           
           console.log(`[HomeScreen] Audio playback complete: ${Date.now() - playStart}ms`);
         } catch (speechError) {
@@ -300,6 +314,7 @@ export default function HomeScreen() {
         clearInterval(processingIntervalRef.current);
         processingIntervalRef.current = null;
       }
+
     } finally {
       // After either success or failure, reverse dim overlay
       overlayOpacity.value = withTiming(0, { duration: 300 });
